@@ -12,6 +12,8 @@ fun main(args: Array<String>) {
             .searchBufferSize(3)
             .searchTimesLimit(5)
             .maxSearchBatchSize(100)
+            //.topNSupplier { listOf(1L, 2L, 3L) }
+            // TODO 增加一个泛型 I
             .build()
     val articles = feedBuilder.buildBy("no_more")
     println("abc")

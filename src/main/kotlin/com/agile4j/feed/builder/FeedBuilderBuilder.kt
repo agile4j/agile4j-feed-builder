@@ -12,6 +12,9 @@ class FeedBuilderBuilder<S, R, T>(supplier: (S, Int) -> List<R>) {
     private val feedBuilder: FeedBuilder<S, R, T> = FeedBuilder(supplier)
 
     fun build(): FeedBuilder<S, R, T> {
+        // 校验
+        // 1. fixedSupplierMap key必须大于1
+        // 2. fixedSupplierMap key必须小于等于searchCount
         return feedBuilder
     }
 
@@ -48,6 +51,24 @@ class FeedBuilderBuilder<S, R, T>(supplier: (S, Int) -> List<R>) {
      */
     fun maxSearchBatchSize(maxSearchBatchSize: Int): FeedBuilderBuilder<S, R, T> {
         feedBuilder.maxSearchBatchSize = maxSearchBatchSize
+        return this
+    }
+
+    /**
+     * topN资源
+     */
+    fun topNSupplier(topNSupplier: () -> List<R>): FeedBuilderBuilder<S, R, T> {
+        feedBuilder.topNSupplier = topNSupplier
+        return this
+    }
+
+    /**
+     * 固定位置资源
+     * @param fixedPosition 位置,从1开始
+     * @param fixedSupplier 从中随机抽取1个资源
+     */
+    fun fixedSupplier(fixedPosition: Int, fixedSupplier: () -> List<R>): FeedBuilderBuilder<S, R, T> {
+        feedBuilder.fixedSupplierMap[fixedPosition] = fixedSupplier
         return this
     }
 
