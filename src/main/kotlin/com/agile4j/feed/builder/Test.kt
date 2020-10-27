@@ -7,13 +7,13 @@ package com.agile4j.feed.builder
 
 fun main(args: Array<String>) {
     val feedBuilder = FeedBuilderFactory
-            .newBuilder<Long, Article, ArticleView>(::getArticlesByTimeDesc)
+            .newBuilder<Long, Long, Article, ArticleView>(::getArticlesByTimeDesc)
             .searchCount(10)
             .searchBufferSize(3)
             .searchTimesLimit(5)
             .maxSearchBatchSize(100)
-            //.topNSupplier { listOf(1L, 2L, 3L) }
-            // TODO 增加一个泛型 I
+            .topNSupplier { listOf(1L, 2L, 3L, 4L, 5L, 6L) }
+            //.fixedSupplier()
             .build()
     val articles = feedBuilder.buildBy("no_more")
     println("abc")
@@ -23,6 +23,6 @@ data class Article(val id: Long)
 
 data class ArticleView(val article: Article)
 
-fun getArticlesByTimeDesc(timeFrom: Long, searchCount: Int): List<Article> {
+fun getArticlesByTimeDesc(timeFrom: Long, searchCount: Int): List<Long> {
     return emptyList()
 }
