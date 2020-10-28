@@ -8,23 +8,28 @@ package com.agile4j.feed.builder
  * @author liurenpeng
  * Created on 2020-08-07
  */
-class FeedBuilder<S, I, A, T>(internal val supplier: (S, Int) -> List<I>) {
+class FeedBuilder<S, I, A, T> internal constructor(
+    private val supplier: (S, Int) -> List<I>,
+    private val searchCount: Int,
+    private val searchBufferSize: Int,
+    private val searchTimesLimit: Int,
+    private val maxSearchBatchSize: Int,
+    private val topNSupplier: () -> List<I>,
+    private val fixedSupplierMap: MutableMap<FixedPosition, () -> List<I>>,
+    private val builder: ((Collection<I>) -> Map<I, A>)?,
+    private val mapper: ((Collection<A>) -> Collection<T>)?,
+    private val filter: (T) -> Boolean,
+    private val sortEncoder: (S) -> String,
+    private val sortDecoder: (String) -> S,
+    private val indexEncoder: (I) -> String,
+    private val indexDecoder: (String) -> I
 
-    internal var searchCount: Int = DEFAULT_SEARCH_COUNT
-    internal var searchBufferSize: Int = DEFAULT_SEARCH_BUFFER_SIZE
-    internal var searchTimesLimit: Int = DEFAULT_SEARCH_TIMES_LIMIT
-    internal var maxSearchBatchSize: Int = DEFAULT_MAX_SEARCH_BATCH_SIZE
-    internal var topNSupplier: () -> List<I> = ::emptyList
-    internal var fixedSupplierMap: MutableMap<Position, () -> List<I>> = mutableMapOf()
-    internal var builder: ((Collection<I>) -> Map<I, A>)? = null
-    internal var mapper: ((Collection<A>) -> Collection<T>)? = null
-    internal var filter: (T) -> Boolean = { true }
+) {
 
-    fun buildBy(cursorStr: String): List<T> {
-        return emptyList()
-    }
-    fun buildBy(cursorStr: String, searchCount: Int): List<A> {
-        // 校验：
+    fun buildBy(cursorStr: String): List<T> = buildBy(cursorStr, searchCount)
+
+    fun buildBy(cursorStr: String, searchCount: Int): List<T> {
+        // TODO 校验：
         // 1. cursor格式
         // 2. searchCount大于等于fixedSupplierMap key的最大值
         return emptyList()

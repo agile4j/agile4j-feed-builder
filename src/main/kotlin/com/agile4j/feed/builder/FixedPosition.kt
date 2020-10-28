@@ -4,7 +4,7 @@ package com.agile4j.feed.builder
  * @author liurenpeng
  * @date Created in 20-10-28
  */
-enum class Position(val value: Int) {
+enum class FixedPosition(val number: Int) {
     FIRST(1),
     SECOND(2),
     THIRD(3),

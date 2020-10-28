@@ -12,15 +12,30 @@ import com.agile4j.model.builder.relation.indexBy
  * @author liurenpeng
  * @date Created in 20-10-27
  */
-class FeedBuilderBuilder<S, I, A, T>(supplier: (S, Int) -> List<I>) {
+class FeedBuilderBuilder<S, I, A, T>(
+    private val supplier: (S, Int) -> List<I>,
+    private val sortEncoder: (S) -> String,
+    private val sortDecoder: (String) -> S,
+    private val indexEncoder: (I) -> String,
+    private val indexDecoder: (String) -> I) {
 
-    private val feedBuilder: FeedBuilder<S, I, A, T> = FeedBuilder(supplier)
+    private var searchCount: Int = DEFAULT_SEARCH_COUNT
+    private var searchBufferSize: Int = DEFAULT_SEARCH_BUFFER_SIZE
+    private var searchTimesLimit: Int = DEFAULT_SEARCH_TIMES_LIMIT
+    private var maxSearchBatchSize: Int = DEFAULT_MAX_SEARCH_BATCH_SIZE
+    private var topNSupplier: () -> List<I> = ::emptyList
+    private var fixedSupplierMap: MutableMap<FixedPosition, () -> List<I>> = mutableMapOf()
+    private var builder: ((Collection<I>) -> Map<I, A>)? = null
+    private var mapper: ((Collection<A>) -> Collection<T>)? = null
+    private var filter: (T) -> Boolean = { true }
 
     fun build(): FeedBuilder<S, I, A, T> {
-        // 校验
+        // TODO 校验
         // 1. fixedSupplierMap key必须大于1
         // 2. fixedSupplierMap key必须小于等于searchCount
-        return feedBuilder
+        return FeedBuilder(supplier, searchCount, searchBufferSize, searchTimesLimit,
+            maxSearchBatchSize, topNSupplier, fixedSupplierMap, builder, mapper, filter,
+            sortEncoder, sortDecoder, indexEncoder, indexDecoder)
     }
 
     /**
@@ -28,7 +43,7 @@ class FeedBuilderBuilder<S, I, A, T>(supplier: (S, Int) -> List<I>) {
      * 默认值[DEFAULT_SEARCH_COUNT]
      */
     fun searchCount(searchCount: Int): FeedBuilderBuilder<S, I, A, T> {
-        feedBuilder.searchCount = searchCount
+        this.searchCount = searchCount
         return this
     }
 
@@ -37,7 +52,7 @@ class FeedBuilderBuilder<S, I, A, T>(supplier: (S, Int) -> List<I>) {
      * 默认值[DEFAULT_SEARCH_BUFFER_SIZE]
      */
     fun searchBufferSize(searchBufferSize: Int): FeedBuilderBuilder<S, I, A, T> {
-        feedBuilder.searchBufferSize = searchBufferSize
+        this.searchBufferSize = searchBufferSize
         return this
     }
 
@@ -46,7 +61,7 @@ class FeedBuilderBuilder<S, I, A, T>(supplier: (S, Int) -> List<I>) {
      * 默认值[DEFAULT_SEARCH_TIMES_LIMIT]
      */
     fun searchTimesLimit(searchTimesLimit: Int): FeedBuilderBuilder<S, I, A, T> {
-        feedBuilder.searchTimesLimit = searchTimesLimit
+        this.searchTimesLimit = searchTimesLimit
         return this
     }
 
@@ -55,7 +70,7 @@ class FeedBuilderBuilder<S, I, A, T>(supplier: (S, Int) -> List<I>) {
      * 默认值[DEFAULT_MAX_SEARCH_BATCH_SIZE]
      */
     fun maxSearchBatchSize(maxSearchBatchSize: Int): FeedBuilderBuilder<S, I, A, T> {
-        feedBuilder.maxSearchBatchSize = maxSearchBatchSize
+        this.maxSearchBatchSize = maxSearchBatchSize
         return this
     }
 
@@ -63,20 +78,20 @@ class FeedBuilderBuilder<S, I, A, T>(supplier: (S, Int) -> List<I>) {
      * topN资源
      */
     fun topNSupplier(topNSupplier: () -> List<I>): FeedBuilderBuilder<S, I, A, T> {
-        feedBuilder.topNSupplier = topNSupplier
+        this.topNSupplier = topNSupplier
         return this
     }
 
     /**
      * 固定位置资源
-     * @param fixedPosition 使用枚举的目的：1.收敛有效值；2.屏蔽下标从0/1开始的实现细节
+     * @param fixedFixedPosition 使用枚举的目的：1.收敛有效值；2.屏蔽下标从0/1开始的实现细节
      * @param fixedSupplier 从中随机抽取1个资源
      */
     fun fixedSupplier(
-        fixedPosition: Position,
+        fixedFixedPosition: FixedPosition,
         fixedSupplier: () -> List<I>
     ): FeedBuilderBuilder<S, I, A, T> {
-        feedBuilder.fixedSupplierMap[fixedPosition] = fixedSupplier
+        this.fixedSupplierMap[fixedFixedPosition] = fixedSupplier
         return this
     }
 
@@ -101,7 +116,7 @@ class FeedBuilderBuilder<S, I, A, T>(supplier: (S, Int) -> List<I>) {
     fun builder(
         builder: (Collection<I>) -> Map<I, A>
     ): FeedBuilderBuilder<S, I, A, T> {
-        feedBuilder.builder = builder
+        this.builder = builder
         return this
     }
 
@@ -125,14 +140,14 @@ class FeedBuilderBuilder<S, I, A, T>(supplier: (S, Int) -> List<I>) {
     fun mapper(
         mapper: (Collection<A>) -> Collection<T>
     ): FeedBuilderBuilder<S, I, A, T> {
-        feedBuilder.mapper = mapper
+        this.mapper = mapper
         return this
     }
 
     fun filter(
         filter: (T) -> Boolean
     ): FeedBuilderBuilder<S, I, A, T> {
-        feedBuilder.filter = filter
+        this.filter = filter
         return this
     }
 }
