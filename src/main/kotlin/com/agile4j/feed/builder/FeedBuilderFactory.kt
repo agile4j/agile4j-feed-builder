@@ -7,13 +7,13 @@ package com.agile4j.feed.builder
 object FeedBuilderFactory {
 
     /**
-     * @param S sortType 排序项类型
-     * @param I indexType 索引类型
-     * @param R resourceType 资源类型
-     * @param T targetType 映射目标类型
-     * @param supplier (sortFrom: SortType, searchCount: Int) -> List<ResourceType>
+     * @param S sortType 排序项类型 例如时间戳对应Long
+     * @param I indexType 索引类型 例如DB主键对应Long
+     * @param A accompanyType 伴生资源类型 例如文章类Article
+     * @param T targetType 映射目标类型 例如文章视图ArticleView
+     * @param supplier (sortFrom: SortType, searchCount: Int) -> List<IndexType>
      */
-    fun <S, I, R, T> newBuilder(supplier: (S, Int) -> List<I>): FeedBuilderBuilder<S, I, R, T> {
+    fun <S, I, A, T> newBuilder(supplier: (S, Int) -> List<I>): FeedBuilderBuilder<S, I, A, T> {
         return FeedBuilderBuilder(supplier)
     }
 }

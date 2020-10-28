@@ -5,6 +5,8 @@ package com.agile4j.feed.builder
  * @date Created in 20-10-27
  */
 
+const val NO_MORE_CURSOR_STR = "no_more"
+
 // 每次获取的资源条数
 const val DEFAULT_SEARCH_COUNT = 10
 
