@@ -52,10 +52,10 @@ class FeedBuilder<S, I, A, T> internal constructor(
         return FeedBuilderResponse(emptyList(), NO_MORE_CURSOR_STR)
     }
 
-    private fun buildInitCursor(): Cursor<S, I> = Cursor(
+    private fun buildInitCursor(): FeedBuilderCursor<S, I> = FeedBuilderCursor(
         Position.TOP, 0, sortInitValue, indexInitValue, mutableSetOf())
 
-    private fun encodeCursor(cursor: Cursor<S, I>): String {
+    private fun encodeCursor(cursor: FeedBuilderCursor<S, I>): String {
         val positionStr = cursor.position.name
         val cumulativeRespCountStr = cursor.cumulativeRespCount.toString()
         val sortStr = sortEncoder.invoke(cursor.sort)
@@ -70,7 +70,7 @@ class FeedBuilder<S, I, A, T> internal constructor(
      * @param cursorStr 格式示例 TOP;10;2492;96789002;90009623,32397452,94994452
      * @throws IllegalArgumentException cursorStr格式错误
      */
-    private fun decodeCursor(cursorStr: String?): Cursor<S, I> {
+    private fun decodeCursor(cursorStr: String?): FeedBuilderCursor<S, I> {
         if (isBlank(cursorStr)) {
             return buildInitCursor()
         }
@@ -94,7 +94,7 @@ class FeedBuilder<S, I, A, T> internal constructor(
             showedRandomIndexSplitList.map(indexDecoder).toMutableSet()
         }
 
-        return Cursor(position, cumulativeRespCount, sort, index, showedRandomIndices)
+        return FeedBuilderCursor(position, cumulativeRespCount, sort, index, showedRandomIndices)
     }
 
 }

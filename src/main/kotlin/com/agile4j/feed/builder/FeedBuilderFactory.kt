@@ -37,9 +37,9 @@ object FeedBuilderFactory {
      * @param T targetType 映射目标类型 例如文章视图ArticleView
      *
      * @param supplier (sortFrom: SortType, searchCount: Int) -> List<IndexType>
-     * @param sortEncoder 排序项编码器
+     * @param sortEncoder 排序项编码器 encode后的值不允许包含字符[CURSOR_SEPARATOR]、[INDEX_SEPARATOR]
      * @param sortDecoder 排序项解码器
-     * @param indexEncoder 索引编码器
+     * @param indexEncoder 索引编码器 encode后的值不允许包含字符[CURSOR_SEPARATOR]、[INDEX_SEPARATOR]
      * @param indexDecoder 索引解码器
      * @param sortInitValue 排序项初始值
      */

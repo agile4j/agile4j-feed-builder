@@ -9,8 +9,9 @@ fun main(args: Array<String>) {
     val position = Position.ofName("23")
     println(position)
 
-    val feedBuilder = FeedBuilderFactory
-        .descLongBuilder<Article, ArticleView>(::getArticlesByTimeDesc)
+    val feedBuilder = FeedBuilderFactory.descLongBuilder<Article, ArticleView>(
+        ::getArticlesByTimeDesc
+    )
         .searchCount(10)
         .maxSearchCount(100)
         .searchBufferSize(3)

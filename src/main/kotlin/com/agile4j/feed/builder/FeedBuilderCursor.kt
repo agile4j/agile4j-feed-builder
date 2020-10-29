@@ -4,7 +4,7 @@ package com.agile4j.feed.builder
  * @author liurenpeng
  * @date Created in 20-10-27
  */
-class Cursor<S, I>(
+class FeedBuilderCursor<S, I>(
     /**
      * 所在feed组成部分的位置
      */
@@ -14,11 +14,11 @@ class Cursor<S, I>(
      */
     val cumulativeRespCount: Int,
     /**
-     * 排序项 encode后的值不允许包含字符[CURSOR_SEPARATOR]、[INDEX_SEPARATOR]
+     * 排序项
      */
     val sort: S,
     /**
-     * 索引项 值不允许包含字符[CURSOR_SEPARATOR]、[INDEX_SEPARATOR]
+     * 索引项
      */
     val index: I,
     /**
