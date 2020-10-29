@@ -8,10 +8,19 @@ class Cursor {
     /**
      * 组成部分 值有四种情况[TOP]、[TAIL]、[NO_MORE]、[FixedPosition.name]
      */
-    val positionStr: String = NO_MORE
+    val positionStr = NO_MORE
     /**
      * 排序项 值不允许包含字符[CURSOR_SEPARATOR]、[INDEX_SEPARATOR]
      */
-    val sortStr: String = ""
+    val sortStr = ""
+    /**
+     * 索引项 值不允许包含字符[CURSOR_SEPARATOR]、[INDEX_SEPARATOR]
+     */
+    val indexStr = ""
+    /**
+     * 已曝光随机索引集
+     */
+    val showedRandomIndicesStr = ""
+
 
 }

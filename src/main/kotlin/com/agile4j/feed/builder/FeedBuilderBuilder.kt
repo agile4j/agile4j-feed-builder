@@ -17,7 +17,8 @@ class FeedBuilderBuilder<S, I, A, T>(
     private val sortEncoder: (S) -> String,
     private val sortDecoder: (String) -> S,
     private val indexEncoder: (I) -> String,
-    private val indexDecoder: (String) -> I) {
+    private val indexDecoder: (String) -> I,
+    private val sortInitValue: S) {
 
     private var searchCount: Int = DEFAULT_SEARCH_COUNT
     private var searchBufferSize: Int = DEFAULT_SEARCH_BUFFER_SIZE

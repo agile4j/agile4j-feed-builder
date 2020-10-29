@@ -26,13 +26,20 @@ class FeedBuilder<S, I, A, T> internal constructor(
 
 ) {
 
-    fun buildBy(cursorStr: String): List<T> = buildBy(cursorStr, searchCount)
+    fun buildBy(cursorStr: String): FeedBuilderResponse<T> = buildBy(cursorStr, searchCount)
 
-    fun buildBy(cursorStr: String, searchCount: Int): List<T> {
+    /**
+     * @param cursorStr 第一次请求传入""，后续请求透传上次请求的[FeedBuilderResponse.nextCursor]
+     * @param searchCount 本次查询条数 优先级为：
+     * 1. 当前参数传入的值
+     * 2. 通过[FeedBuilderBuilder.searchCount]API指定的值
+     * 3. 默认值[DEFAULT_SEARCH_COUNT]
+     */
+    fun buildBy(cursorStr: String, searchCount: Int): FeedBuilderResponse<T> {
         // TODO 校验：
         // 1. cursor格式
         // 2. searchCount大于等于fixedSupplierMap key的最大值
-        return emptyList()
+        return FeedBuilderResponse(emptyList(), NO_MORE)
     }
 
 }

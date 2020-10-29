@@ -8,10 +8,27 @@ import org.apache.commons.lang3.math.NumberUtils
  */
 object FeedBuilderFactory {
 
-    fun <A, T> newBuilder(
+    /**
+     * 适用于排序项、索引类型都为Long的降序feed
+     */
+    fun <A, T> descLongBuilder(
         supplier: (Long, Int) -> List<Long>
-    ) = generalNewBuilder<Long, Long, A, T>(
-        supplier, Long::toString, NumberUtils::toLong, Long::toString, NumberUtils::toLong)
+    ) = generalBuilder<Long, Long, A, T>(
+        supplier,
+        Long::toString, NumberUtils::toLong,
+        Long::toString, NumberUtils::toLong,
+        Long.MAX_VALUE)
+
+    /**
+     * 适用于排序项、索引类型都为Long的升序feed
+     */
+    fun <A, T> ascLongBuilder(
+        supplier: (Long, Int) -> List<Long>
+    ) = generalBuilder<Long, Long, A, T>(
+        supplier,
+        Long::toString, NumberUtils::toLong,
+        Long::toString, NumberUtils::toLong,
+        0L)
 
     /**
      * @param S sortType 排序项类型 例如时间戳对应Long
@@ -24,15 +41,21 @@ object FeedBuilderFactory {
      * @param sortDecoder 排序项解码器
      * @param indexEncoder 索引编码器
      * @param indexDecoder 索引解码器
+     * @param sortInitValue 排序项初始值
      */
-    fun <S, I, A, T> generalNewBuilder(
+    fun <S, I, A, T> generalBuilder(
         supplier: (S, Int) -> List<I>,
         sortEncoder: (S) -> String,
         sortDecoder: (String) -> S,
         indexEncoder: (I) -> String,
-        indexDecoder: (String) -> I
+        indexDecoder: (String) -> I,
+        sortInitValue: S
     ): FeedBuilderBuilder<S, I, A, T> {
-        return FeedBuilderBuilder(supplier, sortEncoder, sortDecoder, indexEncoder, indexDecoder)
+        return FeedBuilderBuilder(
+            supplier,
+            sortEncoder, sortDecoder,
+            indexEncoder, indexDecoder,
+            sortInitValue)
     }
 
 }

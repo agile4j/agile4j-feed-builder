@@ -7,8 +7,8 @@ package com.agile4j.feed.builder
 
 fun main(args: Array<String>) {
     val feedBuilder = FeedBuilderFactory
-        .newBuilder<Article, ArticleView>(::getArticlesByTimeDesc)
-        .searchCount(10)
+        .descLongBuilder<Article, ArticleView>(::getArticlesByTimeDesc)
+        /*.searchCount(10)
         .searchBufferSize(3)
         .searchTimesLimit(5)
         .maxSearchBatchSize(100)
@@ -16,11 +16,14 @@ fun main(args: Array<String>) {
         .fixedSupplier(FixedPosition.SECOND) { listOf(6L, 7L, 8L) }
         .builder(::getArticleByIds)
         .mapper(::articleMapper)
-        .filter { view -> view.article.id > 0 }
+        .filter { view -> view.article.id > 0 }*/
         .build()
-    val articleViews = feedBuilder.buildBy("no_more")
+    val response = feedBuilder.buildBy("")
+    val articleViews = response.result
+    val nextCursor = response.nextCursor
 
     println("abc")
+    println(articleViews)
 }
 
 data class Article(val id: Long)
