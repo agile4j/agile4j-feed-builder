@@ -1,7 +1,6 @@
 package com.agile4j.feed.builder
 
 import org.apache.commons.lang3.StringUtils.isBlank
-import org.apache.commons.lang3.math.NumberUtils
 
 /**
  * @param S sortType 排序项类型
@@ -47,22 +46,28 @@ class FeedBuilder<S, I, A, T> internal constructor(
         val cursor = decodeCursor(cursorStr)
         if (cursor.isNoMore()) return FeedBuilderResponse.noMoreInstance()
 
-        //val isNotMoreThanConf =
+        if (cursor.isTail()) {
+
+        } else {
+
+        }
+
+
+
         // TODO
         return FeedBuilderResponse(emptyList(), NO_MORE_CURSOR_STR)
     }
 
     private fun buildInitCursor(): FeedBuilderCursor<S, I> = FeedBuilderCursor(
-        Position.TOP, 0, sortInitValue, indexInitValue, mutableSetOf())
+        Position.TOP, sortInitValue, indexInitValue, mutableSetOf())
 
     private fun encodeCursor(cursor: FeedBuilderCursor<S, I>): String {
         val positionStr = cursor.position.name
-        val cumulativeRespCountStr = cursor.cumulativeRespCount.toString()
         val sortStr = sortEncoder.invoke(cursor.sort)
         val indexStr = indexEncoder.invoke(cursor.index)
         val showedRandomIndicesStr = cursor.showedRandomIndices
             .joinToString(INDEX_SEPARATOR, transform = indexEncoder)
-        return listOf(positionStr, cumulativeRespCountStr, sortStr, indexStr, showedRandomIndicesStr)
+        return listOf(positionStr, sortStr, indexStr, showedRandomIndicesStr)
             .joinToString(CURSOR_SEPARATOR)
     }
 
@@ -76,17 +81,15 @@ class FeedBuilder<S, I, A, T> internal constructor(
         }
 
         val splitList = cursorStr!!.split(CURSOR_SEPARATOR)
-        if (splitList.size != 5) throw IllegalArgumentException("cursor格式错误:$cursorStr")
+        if (splitList.size != 4) throw IllegalArgumentException("cursor格式错误:$cursorStr")
 
         val positionStr = splitList[0]
-        val cumulativeRespCountStr = splitList[1]
-        val sortStr = splitList[2]
-        val indexStr = splitList[3]
-        val showedRandomIndicesStr = splitList[4]
+        val sortStr = splitList[1]
+        val indexStr = splitList[2]
+        val showedRandomIndicesStr = splitList[3]
 
         val position = Position.ofName(positionStr)
             ?: throw IllegalArgumentException("cursor格式错误:$cursorStr")
-        val cumulativeRespCount = NumberUtils.toInt(cumulativeRespCountStr)
         val sort = sortDecoder.invoke(sortStr)
         val index = indexDecoder.invoke(indexStr)
         val showedRandomIndices: MutableSet<I> = if (isBlank(showedRandomIndicesStr)) mutableSetOf() else {
@@ -94,7 +97,7 @@ class FeedBuilder<S, I, A, T> internal constructor(
             showedRandomIndexSplitList.map(indexDecoder).toMutableSet()
         }
 
-        return FeedBuilderCursor(position, cumulativeRespCount, sort, index, showedRandomIndices)
+        return FeedBuilderCursor(position, sort, index, showedRandomIndices)
     }
 
 }

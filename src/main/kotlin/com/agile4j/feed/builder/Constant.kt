@@ -8,7 +8,7 @@ import com.fasterxml.jackson.module.kotlin.registerKotlinModule
  * @date Created in 20-10-27
  */
 
-const val NO_MORE_CURSOR_STR = "NO_MORE;;;;"
+const val NO_MORE_CURSOR_STR = "NO_MORE;;;"
 
 const val CURSOR_SEPARATOR = ";"
 const val INDEX_SEPARATOR = ","

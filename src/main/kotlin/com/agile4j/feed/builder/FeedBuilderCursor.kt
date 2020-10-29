@@ -10,10 +10,6 @@ class FeedBuilderCursor<S, I>(
      */
     val position: Position,
     /**
-     * 累计已返回的资源总数
-     */
-    val cumulativeRespCount: Int,
-    /**
      * 排序项
      */
     val sort: S,
@@ -27,4 +23,5 @@ class FeedBuilderCursor<S, I>(
     val showedRandomIndices: MutableSet<I>
 ) {
     fun isNoMore() = position == Position.NO_MORE
+    fun isTail() = position == Position.TAIL
 }
