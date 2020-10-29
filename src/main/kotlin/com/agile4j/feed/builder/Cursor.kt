@@ -10,6 +10,10 @@ class Cursor<S, I>(
      */
     val position: Position,
     /**
+     * 累计已返回的资源总数
+     */
+    val cumulativeRespCount: Int,
+    /**
      * 排序项 encode后的值不允许包含字符[CURSOR_SEPARATOR]、[INDEX_SEPARATOR]
      */
     val sort: S,
@@ -22,18 +26,5 @@ class Cursor<S, I>(
      */
     val showedRandomIndices: MutableSet<I>
 ) {
-
-    companion object {
-        /**
-         * @param cursorStr 必须是符合格式的值，否则抛出[CheckException]
-         * 格式示例：TOP;2492;96789002;90009623,32397452,94994452
-         * 格式要求：
-         * 1. notBlank
-         * 2. 有且只有3个[CURSOR_SEPARATOR]
-         * 3. sort、index，可通过相应的encoder、decoder正常编解码
-         */
-        /*fun <S, I> of(cursorStr: String): Cursor<S, I> {
-
-        }*/
-    }
+    fun isNoMore() = position == Position.NO_MORE
 }

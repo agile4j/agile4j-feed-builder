@@ -22,6 +22,7 @@ class FeedBuilderBuilder<S, I, A, T>(
     private val indexInitValue: I) {
 
     private var searchCount: Int = DEFAULT_SEARCH_COUNT
+    private var maxSearchCount: Int = DEFAULT_MAX_SEARCH_COUNT
     private var searchBufferSize: Int = DEFAULT_SEARCH_BUFFER_SIZE
     private var searchTimesLimit: Int = DEFAULT_SEARCH_TIMES_LIMIT
     private var maxSearchBatchSize: Int = DEFAULT_MAX_SEARCH_BATCH_SIZE
@@ -35,7 +36,7 @@ class FeedBuilderBuilder<S, I, A, T>(
         // TODO 校验
         // 1. fixedSupplierMap key必须大于1
         // 2. fixedSupplierMap key必须小于等于searchCount
-        return FeedBuilder(supplier, searchCount, searchBufferSize, searchTimesLimit,
+        return FeedBuilder(supplier, searchCount, maxSearchCount, searchBufferSize, searchTimesLimit,
             maxSearchBatchSize, topNSupplier, fixedSupplierMap, builder, mapper, filter,
             sortEncoder, sortDecoder, indexEncoder, indexDecoder, sortInitValue, indexInitValue)
     }
@@ -46,6 +47,16 @@ class FeedBuilderBuilder<S, I, A, T>(
      */
     fun searchCount(searchCount: Int): FeedBuilderBuilder<S, I, A, T> {
         this.searchCount = searchCount
+        return this
+    }
+
+    /**
+     * 每次获取的最大资源条数
+     * [searchCount]最终值=Math.min(searchCount, maxSearchCount)
+     * 默认值[DEFAULT_MAX_SEARCH_COUNT]
+     */
+    fun maxSearchCount(maxSearchCount: Int): FeedBuilderBuilder<S, I, A, T> {
+        this.maxSearchCount = maxSearchCount
         return this
     }
 
@@ -86,6 +97,7 @@ class FeedBuilderBuilder<S, I, A, T>(
 
     /**
      * 固定位置资源
+     * 注意：对固定位置资源的处理是先随机出1个index，然后读时过滤。因此有被滤掉的可能，要求配置的资源尽量可用
      * @param fixedFixedPosition 使用枚举的目的：1.收敛有效值；2.屏蔽下标从0/1开始的实现细节
      * @param fixedSupplier 从中随机抽取1个资源
      */

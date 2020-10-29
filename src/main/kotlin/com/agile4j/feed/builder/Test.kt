@@ -6,11 +6,15 @@ package com.agile4j.feed.builder
  */
 
 fun main(args: Array<String>) {
+    val position = Position.ofName("23")
+    println(position)
+
     val feedBuilder = FeedBuilderFactory
         .descLongBuilder<Article, ArticleView>(::getArticlesByTimeDesc)
         .searchCount(10)
+        .maxSearchCount(100)
         .searchBufferSize(3)
-        .searchTimesLimit(5)
+        .searchTimesLimit(10)
         .maxSearchBatchSize(100)
         .topNSupplier { listOf(1L, 2L, 3L, 4L, 5L, 6L) }
         .fixedSupplier(FixedPosition.SECOND) { listOf(6L, 7L, 8L) }

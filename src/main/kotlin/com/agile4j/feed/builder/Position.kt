@@ -7,6 +7,8 @@ package com.agile4j.feed.builder
 enum class Position(val fixedPosition: FixedPosition?) {
     TOP(null),
     TAIL(null),
+    NO_MORE(null),
+
     FIRST(FixedPosition.FIRST),
     SECOND(FixedPosition.SECOND),
     THIRD(FixedPosition.THIRD),
@@ -29,4 +31,14 @@ enum class Position(val fixedPosition: FixedPosition?) {
     P20TH(FixedPosition.P20TH);
 
     fun isFixed(): Boolean = fixedPosition != null
+
+    companion object {
+        fun ofName(name: String): Position? {
+            return try {
+                valueOf(name)
+            } catch (e: IllegalArgumentException) {
+                null
+            }
+        }
+    }
 }
