@@ -22,11 +22,13 @@ class FeedBuilder<S, I, A, T> internal constructor(
     private val sortEncoder: (S) -> String,
     private val sortDecoder: (String) -> S,
     private val indexEncoder: (I) -> String,
-    private val indexDecoder: (String) -> I
+    private val indexDecoder: (String) -> I,
+    private val sortInitValue: S,
+    private val indexInitValue: I
 
 ) {
 
-    fun buildBy(cursorStr: String): FeedBuilderResponse<T> = buildBy(cursorStr, searchCount)
+    fun buildBy(cursorStr: String?): FeedBuilderResponse<T> = buildBy(cursorStr, searchCount)
 
     /**
      * @param cursorStr 第一次请求传入""，后续请求透传上次请求的[FeedBuilderResponse.nextCursor]
@@ -35,13 +37,25 @@ class FeedBuilder<S, I, A, T> internal constructor(
      * 2. 通过[FeedBuilderBuilder.searchCount]API指定的值
      * 3. 默认值[DEFAULT_SEARCH_COUNT]
      */
-    fun buildBy(cursorStr: String, searchCount: Int): FeedBuilderResponse<T> {
+    fun buildBy(cursorStr: String?, searchCount: Int): FeedBuilderResponse<T> {
         // TODO 校验：
         // 1. cursor格式
         // 2. searchCount大于等于fixedSupplierMap key的最大值
         return FeedBuilderResponse(emptyList(), NO_MORE)
     }
 
+    private fun buildInitCursor(): Cursor<S, I> = Cursor(
+        Position.TOP, sortInitValue, indexInitValue, mutableSetOf())
+
+    /*private fun encodeCursor(cursor: Cursor<S, I>): String {
+
+    }
+
+    private fun decodeCursor(cursorStr: String?): Cursor<S, I> {
+        if (StringUtils.isBlank(cursorStr)) {
+            return buildInitCursor()
+        }
+    }*/
 }
 
 

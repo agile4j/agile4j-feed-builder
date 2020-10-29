@@ -17,7 +17,7 @@ object FeedBuilderFactory {
         supplier,
         Long::toString, NumberUtils::toLong,
         Long::toString, NumberUtils::toLong,
-        Long.MAX_VALUE)
+        Long.MAX_VALUE, Long.MAX_VALUE)
 
     /**
      * 适用于排序项、索引类型都为Long的升序feed
@@ -28,7 +28,7 @@ object FeedBuilderFactory {
         supplier,
         Long::toString, NumberUtils::toLong,
         Long::toString, NumberUtils::toLong,
-        0L)
+        0L, 0L)
 
     /**
      * @param S sortType 排序项类型 例如时间戳对应Long
@@ -49,13 +49,15 @@ object FeedBuilderFactory {
         sortDecoder: (String) -> S,
         indexEncoder: (I) -> String,
         indexDecoder: (String) -> I,
-        sortInitValue: S
+        sortInitValue: S,
+        indexInitValue: I
     ): FeedBuilderBuilder<S, I, A, T> {
         return FeedBuilderBuilder(
             supplier,
             sortEncoder, sortDecoder,
             indexEncoder, indexDecoder,
-            sortInitValue)
+            sortInitValue,
+            indexInitValue)
     }
 
 }

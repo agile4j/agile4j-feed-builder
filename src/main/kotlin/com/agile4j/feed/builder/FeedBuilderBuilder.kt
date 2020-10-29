@@ -18,7 +18,8 @@ class FeedBuilderBuilder<S, I, A, T>(
     private val sortDecoder: (String) -> S,
     private val indexEncoder: (I) -> String,
     private val indexDecoder: (String) -> I,
-    private val sortInitValue: S) {
+    private val sortInitValue: S,
+    private val indexInitValue: I) {
 
     private var searchCount: Int = DEFAULT_SEARCH_COUNT
     private var searchBufferSize: Int = DEFAULT_SEARCH_BUFFER_SIZE
@@ -36,7 +37,7 @@ class FeedBuilderBuilder<S, I, A, T>(
         // 2. fixedSupplierMap key必须小于等于searchCount
         return FeedBuilder(supplier, searchCount, searchBufferSize, searchTimesLimit,
             maxSearchBatchSize, topNSupplier, fixedSupplierMap, builder, mapper, filter,
-            sortEncoder, sortDecoder, indexEncoder, indexDecoder)
+            sortEncoder, sortDecoder, indexEncoder, indexDecoder, sortInitValue, indexInitValue)
     }
 
     /**
