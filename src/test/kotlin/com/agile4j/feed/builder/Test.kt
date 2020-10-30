@@ -6,6 +6,10 @@ package com.agile4j.feed.builder
  */
 
 fun main(args: Array<String>) {
+    val i1: Int = 1
+    val i2: Int = 1
+    println(i1 == i2)
+
     val position = Position.ofName("23")
     println(position)
 

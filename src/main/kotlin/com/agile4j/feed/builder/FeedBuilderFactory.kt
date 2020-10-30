@@ -38,7 +38,8 @@ object FeedBuilderFactory {
     /**
      * TODO sortTyp已经限定为Number子类了，关于sort的function是不是可以简化掉
      *
-     * @param S sortType 排序项类型 例如时间戳对应Long
+     * @param S sortType 排序项类型 例如时间戳对应Long 必须是以下类型之一：
+     * [Double]、[Float]、[Long]、[Int]、[Short]、[Byte]
      * @param I indexType 索引类型 例如DB主键对应Long
      * @param A accompanyType 伴生资源类型 例如文章类Article
      * @param T targetType 映射目标类型 例如文章视图ArticleView

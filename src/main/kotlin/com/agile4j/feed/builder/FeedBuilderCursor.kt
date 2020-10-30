@@ -20,7 +20,11 @@ class FeedBuilderCursor<S: Number, I>(
     /**
      * 已曝光随机索引集
      */
-    val showedRandomIndices: MutableSet<I>
+    val showedRandomIndices: MutableSet<I>,
+    /**
+     * 是否第一次请求
+     */
+    val isFirstPage: Boolean
 ) {
     fun isNoMore() = position == Position.NO_MORE
     fun isTail() = position == Position.TAIL

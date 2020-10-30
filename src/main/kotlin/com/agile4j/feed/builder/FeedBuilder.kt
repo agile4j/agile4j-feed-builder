@@ -1,9 +1,12 @@
 package com.agile4j.feed.builder
 
 import com.agile4j.utils.util.CollectionUtil
+import com.agile4j.utils.util.MapUtil
 import org.apache.commons.lang3.StringUtils.isBlank
 import org.slf4j.LoggerFactory
+import java.util.*
 import java.util.stream.Collectors.toSet
+import kotlin.collections.ArrayList
 
 /**
  * @param S sortType 排序项类型
@@ -15,7 +18,7 @@ import java.util.stream.Collectors.toSet
  */
 class FeedBuilder<S: Number, I, A, T> internal constructor(
     private val supplier: (S, Int) -> List<Pair<I, S>>,
-    private val searchCount: Int,
+    private val searchCount: Int,  // TODO 这里的数值，都改成supplier
     private val maxSearchCount: Int,
     private val searchBufferSize: Int,
     private val searchTimesLimit: Int,
@@ -24,6 +27,8 @@ class FeedBuilder<S: Number, I, A, T> internal constructor(
     private val fixedSupplierMap: MutableMap<FixedPosition, () -> List<I>>,
     private val builder: ((Collection<I>) -> Map<I, A>)?,
     private val mapper: ((Collection<A>) -> Map<A, T>)?,
+    private val indexFilter: (I) -> Boolean,
+    private val batchIndexFilter: (Collection<I>) -> Map<I, Boolean>,
     private val filter: (A) -> Boolean,
     private val targetFilter: (T) -> Boolean,
     private val sortEncoder: (S) -> String,
@@ -40,8 +45,7 @@ class FeedBuilder<S: Number, I, A, T> internal constructor(
 
 ) {
     private val logger = LoggerFactory.getLogger(this::class.java)
-
-    private lateinit var indexFilter: (I) -> Boolean
+    private val random = Random()
 
     fun buildBy(cursorStr: String?): FeedBuilderResponse<T> = buildBy(cursorStr, searchCount)
 
@@ -55,21 +59,86 @@ class FeedBuilder<S: Number, I, A, T> internal constructor(
             "searchCount值($realSearchCount)必须大于等于maxFixedPosition($maxFixedPosition)")
 
         val cursor = decodeCursor(cursorStr)
-        indexFilter = { !cursor.showedRandomIndices.contains(it) }
 
         return when {
             cursor.isNoMore() -> FeedBuilderResponse.noMoreInstance()
             cursor.isTail() -> buildTailPosition(cursor, realSearchCount)
+            cursor.isFirstPage -> buildFirstPage(cursor, realSearchCount)
             else -> buildHeadPosition(cursor, realSearchCount)
         }
+    }
+
+    private fun buildFirstPage(
+        cursor: FeedBuilderCursor<S, I>,
+        searchCount: Int
+    ): FeedBuilderResponse<T>  {
+        val topNIndices = topNSupplier.invoke()
+
+        val fixedPositionToIndices = fixedSupplierMap
+            .mapValues { it.value.invoke() }
+        val fixedPositionIndices = fixedPositionToIndices.values.stream()
+            .flatMap { it.stream() }.collect(toSet())
+
+        val indices = topNIndices + fixedPositionIndices
+        val indexToSort = indices.map { it to sortInitValue }
+        val dtoList = rendAndFilter(indexToSort, indexFilter, batchIndexFilter)
+        val indexToTarget = dtoList.associateBy({ it.index }, { it.target })
+        val enableIndices = indexToTarget.keys
+
+        val fixedPositionToFetchedIndex = mutableMapOf<FixedPosition, I>()
+        val fetchedFixedPositionIndices = mutableSetOf<I>()
+        val enableFixedPositionIndices = fixedPositionIndices.filter { enableIndices.contains(it) }
+        fixedSupplierMap.keys.forEach { currPosition ->
+            val currIndices = fixedPositionToIndices[currPosition]
+            if (CollectionUtil.isEmpty(currIndices)) return@forEach
+            val currEnableIndices = currIndices!!.filter {
+                enableFixedPositionIndices.contains(it) && !fetchedFixedPositionIndices.contains(it) }
+            if (CollectionUtil.isEmpty(currEnableIndices)) return@forEach
+
+            val fetchedIndex = currEnableIndices[random.nextInt(currEnableIndices.size)]
+            fetchedFixedPositionIndices.add(fetchedIndex)
+            fixedPositionToFetchedIndex[currPosition] = fetchedIndex
+        }
+
+        val enableTopNIndices = topNIndices.filter {
+            enableIndices.contains(it) && !fetchedFixedPositionIndices.contains(it) }
+        val topNTargetList = enableTopNIndices.map { indexToTarget[it]!! }
+
+        val tailTargetList = if (topNTargetList.size < searchCount + 1) {
+            val needTailCount = searchCount + 1 - topNTargetList.size
+            cursor.showedRandomIndices.addAll(fetchedFixedPositionIndices)
+            buildTailPosition(cursor, needTailCount).list
+        } else emptyList()
+
+        val targetList: MutableList<T> = if (!MapUtil.isEmpty(fixedPositionToFetchedIndex)) LinkedList() else
+            ArrayList(topNTargetList.size + tailTargetList.size)
+        targetList.addAll(topNTargetList)
+        targetList.addAll(tailTargetList)
+        fixedPositionToFetchedIndex.forEach{ targetList.add(it.key.number, indexToTarget[it.value]!!) }
+
+        if (targetList.size < searchCount) return FeedBuilderResponse(targetList, NO_MORE_CURSOR_STR)
+
+        val nextTarget = targetList[searchCount]
+        val nextIndex = indexToTarget.entries.filter { it.value == nextTarget }[0].key
+        /*val nextCursor: FeedBuilderCursor<S, I> = if (enableTopNIndices.contains(nextIndex))
+            FeedBuilderCursor(Position.TOP, sortInitValue, nextIndex, fetchedFixedPositionIndices, false)
+        else FeedBuilderCursor(Position.TAIL, )*/
+
+        // TODO
+        return FeedBuilderResponse(emptyList(), NO_MORE_CURSOR_STR)
     }
 
     private fun buildHeadPosition(
         cursor: FeedBuilderCursor<S, I>,
         searchCount: Int
     ): FeedBuilderResponse<T>  {
-        // TODO
+        val topNIndices = topNSupplier.invoke()
 
+
+        //val fixedPositionToIndex= getFixedPositionToIndex(cursor)
+
+
+        // TODO
         return FeedBuilderResponse(emptyList(), NO_MORE_CURSOR_STR)
     }
 
@@ -84,19 +153,24 @@ class FeedBuilder<S: Number, I, A, T> internal constructor(
         var sortOffset = cursor.sort
         var searchTimes = 1
 
-        // 去重用
         var boundarySortVal = cursor.sort
         var boundaryIndexVal = cursor.index
 
-        var indexToSort = supplier.invoke(sortOffset, searchCount + 1)
+        val topNIndices = topNSupplier.invoke().toSet()
+        val fullIndexFilter: (I) -> Boolean = { indexFilter.invoke(it)
+                && !topNIndices.contains(it)
+                && !cursor.showedRandomIndices.contains(it) }
+
+        val realFetchCount = searchCount + searchBufferSize + 1
+        var indexToSort = supplier.invoke(sortOffset, realFetchCount)
         while (CollectionUtil.isNotEmpty(indexToSort)) {
             if (searchTimes >= searchTimesLimit) {
                 logger.warn("searchTimes over limit. searchTimes:{} searchTimeLimit:{}",
                     searchTimes, searchTimesLimit)
-                return FeedBuilderResponse.noMoreInstance()
+                return FeedBuilderResponse.noMoreInstance(fetchedTargetList)
             }
 
-            if (indexToSort.size < searchCount + 1) {
+            if (indexToSort.size < realFetchCount) {
                 dataEnd = true
             } else {
                 val currSortOffset = indexToSort[searchCount].second
@@ -110,38 +184,33 @@ class FeedBuilder<S: Number, I, A, T> internal constructor(
                 }
             }
 
-            indexToSort = indexToSort.filter { indexFilter.invoke(it.first) }
-            val targetToSort = rendAndFilter(indexToSort)
-
-            targetToSort.forEach{ dto ->
+            val dtoList = rendAndFilter(indexToSort, fullIndexFilter, batchIndexFilter)
+            dtoList.forEach{ dto ->
                 val repeated: Boolean = if (sortType == SortType.DESC) {
-                    (sortComparator.compare(dto.sort, cursor.sort) == 0
-                            && indexComparator.compare(dto.index, cursor.index) > 0)
-                            || (sortComparator.compare(dto.sort, boundarySortVal) == 0
-                            && indexComparator.compare(dto.index, boundaryIndexVal) > 0)
+                     (dto.sort == cursor.sort && dto.index > cursor.index)
+                            || (dto.sort == boundarySortVal && dto.index > boundaryIndexVal)
                             || (fetchedIndexList.contains(dto.index))
                 } else {
-                    (sortComparator.compare(dto.sort, cursor.sort) == 0
-                            && indexComparator.compare(dto.index, cursor.index) < 0)
-                            || (sortComparator.compare(dto.sort, boundarySortVal) == 0
-                            && indexComparator.compare(dto.index, boundaryIndexVal) < 0)
+                    (dto.sort ==  cursor.sort && dto.index < cursor.index)
+                            || (dto.sort == boundarySortVal && dto.index < boundaryIndexVal)
                             || (fetchedIndexList.contains(dto.index))
                 }
                 if (repeated) return@forEach
 
                 if (fetchedTargetList.size == searchCount) {
                     return FeedBuilderResponse(fetchedTargetList, encodeCursor(
-                        FeedBuilderCursor(Position.TAIL, dto.sort, dto.index, cursor.showedRandomIndices)))
+                        FeedBuilderCursor(Position.TAIL, dto.sort, dto.index,
+                            cursor.showedRandomIndices, false)))
                 } else {
                     fetchedTargetList.add(dto.target)
                     fetchedIndexList.add(dto.index)
                     if (sortType == SortType.DESC) {
-                        if (sortComparator.compare(dto.sort, boundarySortVal) <= 0) {
+                        if (dto.sort <= boundarySortVal) {
                             boundarySortVal = dto.sort
                             boundaryIndexVal = dto.index
                         }
                     } else {
-                        if (sortComparator.compare(dto.sort, boundarySortVal) >= 0) {
+                        if (dto.sort >= boundarySortVal) {
                             boundarySortVal = dto.sort
                             boundaryIndexVal = dto.index
                         }
@@ -149,31 +218,130 @@ class FeedBuilder<S: Number, I, A, T> internal constructor(
                 }
             }
 
-            indexToSort = if (dataEnd) emptyList() else supplier.invoke(sortOffset, searchCount + 1)
+            indexToSort = if (dataEnd) emptyList() else supplier.invoke(sortOffset, realFetchCount)
             searchTimes++
         }
 
-        return FeedBuilderResponse.noMoreInstance()
+        return FeedBuilderResponse.noMoreInstance(fetchedTargetList)
     }
 
-    private fun rendAndFilter(indexToSorts: List<Pair<I, S>>): List<ResourceDTO<S, I, T>> {
-        if (CollectionUtil.isEmpty(indexToSorts)) return emptyList()
+    private fun fetchTailDTOList(
+        cursor: FeedBuilderCursor<S, I>,
+        searchCount: Int
+    ): List<ResourceDTO<S, I, T>>  {
+        val fetchedDTOList = mutableListOf<ResourceDTO<S, I, T>>()
+        val fetchedIndexList = mutableSetOf<I>()
+
+        var dataEnd = false
+        var sortOffset = cursor.sort
+        var searchTimes = 1
+
+        var boundarySortVal = cursor.sort
+        var boundaryIndexVal = cursor.index
+
+        val topNIndices = topNSupplier.invoke().toSet()
+        val fullIndexFilter: (I) -> Boolean = { indexFilter.invoke(it)
+                && !topNIndices.contains(it)
+                && !cursor.showedRandomIndices.contains(it) }
+
+        val realFetchCount = searchCount + searchBufferSize + 1
+        var indexToSort = supplier.invoke(sortOffset, realFetchCount)
+        while (CollectionUtil.isNotEmpty(indexToSort)) {
+            if (searchTimes >= searchTimesLimit) {
+                logger.warn("searchTimes over limit. searchTimes:{} searchTimeLimit:{}",
+                    searchTimes, searchTimesLimit)
+                return fetchedDTOList
+            }
+
+            if (indexToSort.size < realFetchCount) {
+                dataEnd = true
+            } else {
+                val currSortOffset = indexToSort[searchCount].second
+                if (currSortOffset == sortOffset) {
+                    // 说明同offset的记录条数超出searchCount了，策略是先全部查出当前offset的记录，再offset--/++
+                    indexToSort = supplier.invoke(sortOffset, maxSearchCount)
+                    sortOffset = if (sortType == SortType.DESC)
+                        decrementSortVal(sortOffset) else incrementSortVal(sortOffset)
+                } else {
+                    sortOffset = currSortOffset
+                }
+            }
+
+            val dtoList = rendAndFilter(indexToSort, fullIndexFilter, batchIndexFilter)
+            dtoList.forEach{ dto ->
+                val repeated: Boolean = if (sortType == SortType.DESC) {
+                    (dto.sort == cursor.sort && dto.index > cursor.index)
+                            || (dto.sort == boundarySortVal && dto.index > boundaryIndexVal)
+                            || (fetchedIndexList.contains(dto.index))
+                } else {
+                    (dto.sort ==  cursor.sort && dto.index < cursor.index)
+                            || (dto.sort == boundarySortVal && dto.index < boundaryIndexVal)
+                            || (fetchedIndexList.contains(dto.index))
+                }
+                if (repeated) return@forEach
+
+                if (fetchedDTOList.size == searchCount) {
+                    return fetchedDTOList
+                } else {
+                    fetchedDTOList.add(dto)
+                    fetchedIndexList.add(dto.index)
+                    if (sortType == SortType.DESC) {
+                        if (dto.sort <= boundarySortVal) {
+                            boundarySortVal = dto.sort
+                            boundaryIndexVal = dto.index
+                        }
+                    } else {
+                        if (dto.sort >= boundarySortVal) {
+                            boundarySortVal = dto.sort
+                            boundaryIndexVal = dto.index
+                        }
+                    }
+                }
+            }
+
+            indexToSort = if (dataEnd) emptyList() else supplier.invoke(sortOffset, realFetchCount)
+            searchTimes++
+        }
+
+        return fetchedDTOList
+    }
+
+    private operator fun S.compareTo(s: S): Int = sortComparator.compare(this, s)
+    private operator fun I.compareTo(i: I): Int = indexComparator.compare(this, i)
+
+    private fun rendAndFilter(
+        originIndexToSort: List<Pair<I, S>>,
+        indexFilter: (I) -> Boolean,
+        batchIndexFilter: (Collection<I>) -> Map<I, Boolean>
+    ): List<ResourceDTO<S, I, T>> {
+        if (CollectionUtil.isEmpty(originIndexToSort)) return emptyList()
+        var indexToSort = originIndexToSort.filter { indexFilter.invoke(it.first) }
+        if (CollectionUtil.isEmpty(indexToSort)) return emptyList()
+        val indexToEnable = batchIndexFilter.invoke(indexToSort.map { it.first }.toSet())
+        indexToSort = originIndexToSort.filter { indexToEnable.getOrDefault(it.first, false) }
+        if (CollectionUtil.isEmpty(indexToSort)) return emptyList()
 
         // TODO 可集成agile4j-model-builder的逻辑
 
-        val indices = indexToSorts.map { it.first }
-        val indexToAccompany = builder?.invoke(indices) ?: return emptyList()
-        val accompanies = indexToAccompany.values.stream().filter(filter).collect(toSet())
-        if (CollectionUtil.isEmpty(accompanies)) return emptyList()
+        // TODO 剪枝操作
 
-        val accompanyToTarget = mapper?.invoke(accompanies) ?: return emptyList()
-        val targets = accompanyToTarget.values.stream().filter(targetFilter).collect(toSet())
-        if (CollectionUtil.isEmpty(targets)) return emptyList()
+        val indices = indexToSort.map { it.first }
+        val indexToAccompany = builder?.invoke(indices) ?: return emptyList()
+        val enableAccompanies = indexToAccompany.values.stream()
+            .filter{ it != null }.filter(filter).collect(toSet())
+        if (CollectionUtil.isEmpty(enableAccompanies)) return emptyList()
+
+        val accompanyToTarget = mapper?.invoke(enableAccompanies) ?: return emptyList()
+        val enableTargets = accompanyToTarget.values.stream()
+            .filter{ it != null }.filter(targetFilter).collect(toSet())
+        if (CollectionUtil.isEmpty(enableTargets)) return emptyList()
 
         val result: MutableList<ResourceDTO<S, I, T>> = mutableListOf()
-        indexToSorts.forEach{ i2s ->
+        indexToSort.forEach{ i2s ->
             val a = indexToAccompany[i2s.first] ?: return@forEach
+            if (!enableAccompanies.contains(a)) return@forEach
             val t = accompanyToTarget[a] ?: return@forEach
+            if (!enableTargets.contains(t)) return@forEach
             result.add(ResourceDTO(i2s.second, i2s.first, t))
         }
         return result
@@ -206,7 +374,7 @@ class FeedBuilder<S: Number, I, A, T> internal constructor(
         }
 
     private fun buildInitCursor(): FeedBuilderCursor<S, I> = FeedBuilderCursor(
-        Position.TOP, sortInitValue, indexInitValue, mutableSetOf())
+        Position.TOP, sortInitValue, indexInitValue, mutableSetOf(), true)
 
     private fun encodeCursor(cursor: FeedBuilderCursor<S, I>): String {
         val positionStr = cursor.position.name
@@ -244,7 +412,7 @@ class FeedBuilder<S: Number, I, A, T> internal constructor(
             showedRandomIndexSplitList.map(indexDecoder).toMutableSet()
         }
 
-        return FeedBuilderCursor(position, sort, index, showedRandomIndices)
+        return FeedBuilderCursor(position, sort, index, showedRandomIndices, false)
     }
 
 }

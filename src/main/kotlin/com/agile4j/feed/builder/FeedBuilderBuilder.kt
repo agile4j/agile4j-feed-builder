@@ -33,6 +33,8 @@ class FeedBuilderBuilder<S: Number, I, A, T>(
     private var fixedSupplierMap: MutableMap<FixedPosition, () -> List<I>> = mutableMapOf()
     private var builder: ((Collection<I>) -> Map<I, A>)? = null
     private var mapper: ((Collection<A>) -> Map<A, T>)? = null
+    private var indexFilter: (I) -> Boolean = { true }
+    private var batchIndexFilter: (Collection<I>) -> Map<I, Boolean> = { it.associateWith { true } }
     private var filter: (A) -> Boolean = { true }
     private var targetFilter: (T) -> Boolean = { true }
 
@@ -44,8 +46,9 @@ class FeedBuilderBuilder<S: Number, I, A, T>(
             "searchCount值($searchCount)必须大于等于maxFixedPosition($maxFixedPosition)")
 
         return FeedBuilder(supplier, searchCount, maxSearchCount, searchBufferSize, searchTimesLimit,
-            maxSearchBatchSize, topNSupplier, fixedSupplierMap, builder, mapper, filter, targetFilter,
-            sortEncoder, sortDecoder, indexEncoder, indexDecoder, sortInitValue, indexInitValue,
+            maxSearchBatchSize, topNSupplier, fixedSupplierMap, builder, mapper,
+            indexFilter, batchIndexFilter, filter, targetFilter, sortEncoder, sortDecoder,
+            indexEncoder, indexDecoder, sortInitValue, indexInitValue,
             sortComparator, indexComparator, sortType, maxFixedPosition)
     }
 
@@ -163,6 +166,20 @@ class FeedBuilderBuilder<S: Number, I, A, T>(
         mapper: (Collection<A>) -> Map<A, T>
     ): FeedBuilderBuilder<S, I, A, T> {
         this.mapper = mapper
+        return this
+    }
+
+    fun indexFilter(
+        indexFilter: (I) -> Boolean
+    ): FeedBuilderBuilder<S, I, A, T> {
+        this.indexFilter = indexFilter
+        return this
+    }
+
+    fun batchIndexFilter(
+        batchIndexFilter: (Collection<I>) -> Map<I, Boolean>
+    ): FeedBuilderBuilder<S, I, A, T> {
+        this.batchIndexFilter = batchIndexFilter
         return this
     }
 
