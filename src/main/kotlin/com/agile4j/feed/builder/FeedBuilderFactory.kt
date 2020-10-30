@@ -1,6 +1,7 @@
 package com.agile4j.feed.builder
 
 import org.apache.commons.lang3.math.NumberUtils
+import java.util.Comparator.comparingLong
 
 /**
  * @author liurenpeng
@@ -12,25 +13,31 @@ object FeedBuilderFactory {
      * 适用于排序项、索引类型都为Long的降序feed
      */
     fun <A, T> descLongBuilder(
-        supplier: (Long, Int) -> List<Long>
+        supplier: (Long, Int) -> List<Pair<Long, Long>>
     ) = generalBuilder<Long, Long, A, T>(
         supplier,
         Long::toString, NumberUtils::toLong,
         Long::toString, NumberUtils::toLong,
-        Long.MAX_VALUE, Long.MAX_VALUE)
+        Long.MAX_VALUE, Long.MAX_VALUE,
+        comparingLong {it}, comparingLong {it},
+        SortType.DESC)
 
     /**
      * 适用于排序项、索引类型都为Long的升序feed
      */
     fun <A, T> ascLongBuilder(
-        supplier: (Long, Int) -> List<Long>
+        supplier: (Long, Int) -> List<Pair<Long, Long>>
     ) = generalBuilder<Long, Long, A, T>(
         supplier,
         Long::toString, NumberUtils::toLong,
         Long::toString, NumberUtils::toLong,
-        0L, 0L)
+        0L, 0L,
+        comparingLong {it}, comparingLong {it},
+        SortType.ASC)
 
     /**
+     * TODO sortTyp已经限定为Number子类了，关于sort的function是不是可以简化掉
+     *
      * @param S sortType 排序项类型 例如时间戳对应Long
      * @param I indexType 索引类型 例如DB主键对应Long
      * @param A accompanyType 伴生资源类型 例如文章类Article
@@ -43,21 +50,27 @@ object FeedBuilderFactory {
      * @param indexDecoder 索引解码器
      * @param sortInitValue 排序项初始值
      */
-    fun <S, I, A, T> generalBuilder(
-        supplier: (S, Int) -> List<I>,
+    fun <S: Number, I, A, T> generalBuilder(
+        supplier: (S, Int) -> List<Pair<I, S>>,
         sortEncoder: (S) -> String,
         sortDecoder: (String) -> S,
         indexEncoder: (I) -> String,
         indexDecoder: (String) -> I,
         sortInitValue: S,
-        indexInitValue: I
+        indexInitValue: I,
+        sortComparator: Comparator<S>,
+        indexComparator: Comparator<I>,
+        sortType: SortType
     ): FeedBuilderBuilder<S, I, A, T> {
         return FeedBuilderBuilder(
             supplier,
             sortEncoder, sortDecoder,
             indexEncoder, indexDecoder,
             sortInitValue,
-            indexInitValue)
+            indexInitValue,
+            sortComparator,
+            indexComparator,
+            sortType)
     }
 
 }

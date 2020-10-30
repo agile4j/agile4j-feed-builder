@@ -22,13 +22,17 @@ const val DEFAULT_MAX_SEARCH_COUNT = Int.MAX_VALUE
 // 为避免读时过滤导致多次查询增加的额外查询条数
 const val DEFAULT_SEARCH_BUFFER_SIZE = 3
 
-// 为避免死循环限制一次请求最多获取资源次数
-const val DEFAULT_SEARCH_TIMES_LIMIT = 10
+// 为避免死循环限制最多循环获取资源次数
+const val DEFAULT_SEARCH_TIMES_LIMIT = 5
 
 // 当排序项相同的资源条量大于“每次获取的资源条数”时，一次性把该排序项对应值下的资源全部取出时的limit大数值
 const val DEFAULT_MAX_SEARCH_BATCH_SIZE = 100
 
 val JSON_MAPPER = ObjectMapper().registerKotlinModule()
+
+enum class SortType {
+    ASC, DESC
+}
 
 enum class FixedPosition(val number: Int) {
     FIRST(1),

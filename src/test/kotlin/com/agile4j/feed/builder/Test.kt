@@ -9,22 +9,21 @@ fun main(args: Array<String>) {
     val position = Position.ofName("23")
     println(position)
 
-    val feedBuilder = FeedBuilderFactory.descLongBuilder<Article, ArticleView>(
-        ::getArticlesByTimeDesc
-    )
+    val feedBuilder = FeedBuilderFactory
+        .descLongBuilder<Article, ArticleView>(::getArticlesByTimeDesc)
         .searchCount(10)
         .maxSearchCount(100)
         .searchBufferSize(3)
-        .searchTimesLimit(10)
+        .searchTimesLimit(5)
         .maxSearchBatchSize(100)
         .topNSupplier { listOf(1L, 2L, 3L, 4L, 5L, 6L) }
         .fixedSupplier(FixedPosition.SECOND) { listOf(6L, 7L, 8L) }
         .builder(::getArticleByIds)
         .mapper(::articleMapper)
-        .filter { view -> view.article.id > 0 }
+        .targetFilter { view -> view.article.id > 0 }
         .build()
     val response = feedBuilder.buildBy("")
-    val articleViews = response.result
+    val articleViews = response.list
     val nextCursor = response.nextCursor
 
     println("abc")
@@ -39,11 +38,11 @@ fun getArticleByIds(ids: Collection<Long>): Map<Long, Article> {
     return emptyMap()
 }
 
-fun articleMapper(articles: Collection<Article>): Collection<ArticleView> {
-    return emptyList()
+fun articleMapper(articles: Collection<Article>): Map<Article, ArticleView> {
+    return emptyMap()
 }
 
-fun getArticlesByTimeDesc(timeFrom: Long, searchCount: Int): List<Long> {
+fun getArticlesByTimeDesc(timeFrom: Long, searchCount: Int): List<Pair<Long, Long>> {
     return emptyList()
 }
 

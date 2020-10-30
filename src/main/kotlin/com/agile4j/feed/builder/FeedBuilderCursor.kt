@@ -4,7 +4,7 @@ package com.agile4j.feed.builder
  * @author liurenpeng
  * @date Created in 20-10-27
  */
-class FeedBuilderCursor<S, I>(
+class FeedBuilderCursor<S: Number, I>(
     /**
      * 所在feed组成部分的位置
      */

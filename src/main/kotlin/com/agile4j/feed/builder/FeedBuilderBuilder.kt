@@ -12,14 +12,17 @@ import com.agile4j.model.builder.relation.indexBy
  * @author liurenpeng
  * @date Created in 20-10-27
  */
-class FeedBuilderBuilder<S, I, A, T>(
-    private val supplier: (S, Int) -> List<I>,
+class FeedBuilderBuilder<S: Number, I, A, T>(
+    private val supplier: (S, Int) -> List<Pair<I, S>>,
     private val sortEncoder: (S) -> String,
     private val sortDecoder: (String) -> S,
     private val indexEncoder: (I) -> String,
     private val indexDecoder: (String) -> I,
     private val sortInitValue: S,
-    private val indexInitValue: I) {
+    private val indexInitValue: I,
+    private val sortComparator: Comparator<S>,
+    private val indexComparator: Comparator<I>,
+    private val sortType: SortType) {
 
     private var searchCount: Int = DEFAULT_SEARCH_COUNT
     private var maxSearchCount: Int = DEFAULT_MAX_SEARCH_COUNT
@@ -29,16 +32,21 @@ class FeedBuilderBuilder<S, I, A, T>(
     private var topNSupplier: () -> List<I> = ::emptyList
     private var fixedSupplierMap: MutableMap<FixedPosition, () -> List<I>> = mutableMapOf()
     private var builder: ((Collection<I>) -> Map<I, A>)? = null
-    private var mapper: ((Collection<A>) -> Collection<T>)? = null
-    private var filter: (T) -> Boolean = { true }
+    private var mapper: ((Collection<A>) -> Map<A, T>)? = null
+    private var filter: (A) -> Boolean = { true }
+    private var targetFilter: (T) -> Boolean = { true }
 
     fun build(): FeedBuilder<S, I, A, T> {
-        // TODO 校验
-        // 1. fixedSupplierMap key必须大于1
-        // 2. fixedSupplierMap key必须小于等于searchCount
+        if (maxSearchCount < searchCount) throw IllegalArgumentException(
+            "maxSearchCount值($maxSearchCount)必须大于等于searchCount($searchCount)")
+        val maxFixedPosition = fixedSupplierMap.keys.maxBy { it.number }?.number?:0
+        if (searchCount < maxFixedPosition) throw IllegalArgumentException(
+            "searchCount值($searchCount)必须大于等于maxFixedPosition($maxFixedPosition)")
+
         return FeedBuilder(supplier, searchCount, maxSearchCount, searchBufferSize, searchTimesLimit,
-            maxSearchBatchSize, topNSupplier, fixedSupplierMap, builder, mapper, filter,
-            sortEncoder, sortDecoder, indexEncoder, indexDecoder, sortInitValue, indexInitValue)
+            maxSearchBatchSize, topNSupplier, fixedSupplierMap, builder, mapper, filter, targetFilter,
+            sortEncoder, sortDecoder, indexEncoder, indexDecoder, sortInitValue, indexInitValue,
+            sortComparator, indexComparator, sortType, maxFixedPosition)
     }
 
     /**
@@ -152,16 +160,23 @@ class FeedBuilderBuilder<S, I, A, T>(
      *  @see [agile4j-model-builder](https://github.com/agile4j/agile4j-model-builder)
      */
     fun mapper(
-        mapper: (Collection<A>) -> Collection<T>
+        mapper: (Collection<A>) -> Map<A, T>
     ): FeedBuilderBuilder<S, I, A, T> {
         this.mapper = mapper
         return this
     }
 
     fun filter(
-        filter: (T) -> Boolean
+        filter: (A) -> Boolean
     ): FeedBuilderBuilder<S, I, A, T> {
         this.filter = filter
+        return this
+    }
+
+    fun targetFilter(
+        targetFilter: (T) -> Boolean
+    ): FeedBuilderBuilder<S, I, A, T> {
+        this.targetFilter = targetFilter
         return this
     }
 }
