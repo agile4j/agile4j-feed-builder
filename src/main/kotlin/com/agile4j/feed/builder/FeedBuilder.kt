@@ -99,6 +99,7 @@ class FeedBuilder<S: Number, I, A, T> internal constructor(
             fetchedFixedPositionIndices.add(fetchedIndex)
             fixedPositionToFetchedIndex[currPosition] = fetchedIndex
         }
+        cursor.showedRandomIndices.addAll(fetchedFixedPositionIndices)
 
         val enableTopNIndices = topNIndices.filter {
             enableIndices.contains(it) && !fetchedFixedPositionIndices.contains(it) }
@@ -106,7 +107,6 @@ class FeedBuilder<S: Number, I, A, T> internal constructor(
 
         val tailDTOList = if (topNTargetList.size < searchCount + 1) {
             val needTailCount = searchCount + 1 - topNTargetList.size
-            cursor.showedRandomIndices.addAll(fetchedFixedPositionIndices)
             fetchTailDTOList(cursor, needTailCount)
         } else emptyList()
         tailDTOList.forEach{ indexToTarget[it.index] = it.target }
@@ -137,13 +137,39 @@ class FeedBuilder<S: Number, I, A, T> internal constructor(
         searchCount: Int
     ): FeedBuilderResponse<T>  {
         val topNIndices = topNSupplier.invoke()
+        val topNIndexToSort = topNIndices.map { it to sortInitValue }
+        val topNFilter: (I) -> Boolean = { indexFilter.invoke(it)
+                && !cursor.showedRandomIndices.contains(it)
+                && it <= cursor.index }
+        val topNDTOList = rendAndFilter(topNIndexToSort, topNFilter, batchIndexFilter)
+        val topNTargetList = topNDTOList.map { it.target }
+        val enableTopNIndices = topNDTOList.map { it.index }
 
+        val indexToTarget = topNDTOList.associateBy({ it.index }, { it.target }).toMutableMap()
 
-        //val fixedPositionToIndex= getFixedPositionToIndex(cursor)
+        val tailDTOList = if (topNTargetList.size < searchCount + 1) {
+            val needTailCount = searchCount + 1 - topNTargetList.size
+            fetchTailDTOList(cursor, needTailCount)
+        } else emptyList()
+        tailDTOList.forEach{ indexToTarget[it.index] = it.target }
+        val tailTargetList = tailDTOList.map { it.target }
 
+        val targetList: MutableList<T> = ArrayList(topNTargetList.size + tailTargetList.size)
+        targetList.addAll(topNTargetList)
+        targetList.addAll(tailTargetList)
 
-        // TODO
-        return FeedBuilderResponse(emptyList(), NO_MORE_CURSOR_STR)
+        if (targetList.size < searchCount) return FeedBuilderResponse(targetList, NO_MORE_CURSOR_STR)
+
+        val nextTarget = targetList[searchCount]
+        val nextIndex = indexToTarget.entries.filter { it.value == nextTarget }[0].key
+        val nextCursor: FeedBuilderCursor<S, I> = if (enableTopNIndices.contains(nextIndex)) {
+            FeedBuilderCursor(Position.TOP, sortInitValue, nextIndex, cursor.showedRandomIndices, false)
+        } else {
+            val nextSort = tailDTOList.filter { it.index == nextIndex }[0].sort
+            FeedBuilderCursor(Position.TAIL, nextSort, nextIndex, cursor.showedRandomIndices, false)
+        }
+
+        return FeedBuilderResponse(targetList.subList(0, searchCount), encodeCursor(nextCursor))
     }
 
     private fun buildTailPosition(
@@ -195,7 +221,7 @@ class FeedBuilder<S: Number, I, A, T> internal constructor(
                 val currSortOffset = indexToSort[searchCount].second
                 if (currSortOffset == sortOffset) {
                     // 说明同offset的记录条数超出searchCount了，策略是先全部查出当前offset的记录，再offset--/++
-                    indexToSort = supplier.invoke(sortOffset, maxSearchCount)
+                    indexToSort = supplier.invoke(sortOffset, maxSearchBatchSize)
                     sortOffset = if (sortType == SortType.DESC)
                         decrementSortVal(sortOffset) else incrementSortVal(sortOffset)
                 } else {
