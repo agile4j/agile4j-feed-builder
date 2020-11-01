@@ -6,13 +6,6 @@ package com.agile4j.feed.builder
  */
 
 fun main(args: Array<String>) {
-    val i1: Int = 1
-    val i2: Int = 1
-    println(i1 == i2)
-
-    val position = Position.ofName("23")
-    println(position)
-
     val feedBuilder = FeedBuilderFactory
         .descLongBuilder(Article::class, ArticleView::class, ::getArticlesByTimeDesc)
         .searchCount{ 10 }
@@ -24,14 +17,17 @@ fun main(args: Array<String>) {
         .fixedSupplier(FixedPosition.SECOND) { listOf(6L, 7L, 8L) }
         .builder(::getArticleByIds)
         .mapper(::articleMapper)
+        .indexFilter { it > 0 }
+        .batchIndexFilter { ids -> ids.associateWith { it > 0 } }
+        .filter { it.id > 0 }
         .targetFilter { view -> view.article.id > 0 }
         .build()
     val response = feedBuilder.buildBy("")
     val articleViews = response.list
     val nextCursor = response.nextCursor
 
-    println("abc")
     println(articleViews)
+    println(nextCursor)
 }
 
 data class Article(val id: Long)
