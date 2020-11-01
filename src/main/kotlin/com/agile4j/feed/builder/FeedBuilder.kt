@@ -1,6 +1,8 @@
 package com.agile4j.feed.builder
 
 import com.agile4j.model.builder.build.BuildContext
+import com.agile4j.model.builder.buildIndexToAccompanyWithExistModelBuilder
+import com.agile4j.model.builder.buildMapOfAWithExistModelBuilder
 import com.agile4j.utils.util.CollectionUtil
 import com.agile4j.utils.util.MapUtil
 import org.apache.commons.lang3.StringUtils.isBlank
@@ -54,20 +56,23 @@ class FeedBuilder<S: Number, I: Any, A: Any, T: Any> internal constructor(
 
     /**
      * @param cursorStr 第一次请求传入""，后续请求透传上次请求返回的[FeedBuilderResponse.nextCursor]
-     * @param searchCount 本次查询条数 必须大于等于最大固定资源位位置，否则抛出[IllegalArgumentException]
+     * @param searchCount 查询条数 必须大于等于最大固定资源位位置，否则抛出[IllegalArgumentException]
      */
     fun buildBy(cursorStr: String?, searchCount: Int): FeedBuilderResponse<T> {
         val realSearchCount = Math.min(searchCount, maxSearchCount.invoke())
         if (realSearchCount < maxFixedPosition) throw IllegalArgumentException(
             "searchCount值($realSearchCount)必须大于等于maxFixedPosition($maxFixedPosition)")
-
         val cursor = decodeCursor(cursorStr)
 
-        return when {
-            cursor.isNoMore() -> FeedBuilderResponse.noMoreInstance()
-            cursor.isTail() -> buildTailPosition(cursor, realSearchCount)
-            cursor.isFirstPage -> buildFirstPage(cursor, realSearchCount)
-            else -> buildHeadPosition(cursor, realSearchCount)
+        try {
+            return when {
+                cursor.isNoMore() -> FeedBuilderResponse.noMoreInstance()
+                cursor.isTail() -> buildTailPosition(cursor, realSearchCount)
+                cursor.isFirstPage -> buildFirstPage(cursor, realSearchCount)
+                else -> buildHeadPosition(cursor, realSearchCount)
+            }
+        } finally {
+            Scopes.setModelBuilder(null)
         }
     }
 
@@ -315,8 +320,19 @@ class FeedBuilder<S: Number, I: Any, A: Any, T: Any> internal constructor(
             .filter{ it != null }.filter(targetFilter).collect(toSet())
         if (CollectionUtil.isEmpty(enableTargets)) return emptyList()
 
+        return buildDTOList(indexToSort, indexToAccompany,
+            enableAccompanies, accompanyToTarget, enableTargets)
+    }
+
+    private fun buildDTOList(
+        indexToSort: List<Pair<I, S>>,
+        indexToAccompany: Map<I, A>,
+        enableAccompanies: MutableSet<A>,
+        accompanyToTarget: Map<A, T>,
+        enableTargets: MutableSet<T>
+    ): MutableList<ResourceDTO<S, I, T>> {
         val result: MutableList<ResourceDTO<S, I, T>> = mutableListOf()
-        indexToSort.forEach{ i2s ->
+        indexToSort.forEach { i2s ->
             val a = indexToAccompany[i2s.first] ?: return@forEach
             if (!enableAccompanies.contains(a)) return@forEach
             val t = accompanyToTarget[a] ?: return@forEach
@@ -326,11 +342,27 @@ class FeedBuilder<S: Number, I: Any, A: Any, T: Any> internal constructor(
         return result
     }
 
+    @Suppress("UNCHECKED_CAST")
     private fun renderAndFilterByModelBuilder(
         indexToSort: List<Pair<I, S>>
     ): List<ResourceDTO<S, I, T>> {
-        // TODO 剪枝操作
-        return emptyList()
+        val modelBuilder = Scopes.getModelBuilderWithInit()
+
+        val indices = indexToSort.map { it.first }
+        val indexToAccompany = buildIndexToAccompanyWithExistModelBuilder(
+            modelBuilder, accompanyClass, indices)
+        val enableAccompanies = indexToAccompany.values.stream()
+            .filter{ it != null }.filter(filter).collect(toSet())
+        if (CollectionUtil.isEmpty(enableAccompanies)) return emptyList()
+
+        val accompanyToTarget = buildMapOfAWithExistModelBuilder(
+            modelBuilder, targetClass, enableAccompanies) as Map<A, T>
+        val enableTargets = accompanyToTarget.values.stream()
+            .filter{ it != null }.filter(targetFilter).collect(toSet())
+        if (CollectionUtil.isEmpty(enableTargets)) return emptyList()
+
+        return buildDTOList(indexToSort, indexToAccompany,
+            enableAccompanies, accompanyToTarget, enableTargets)
     }
 
     class ResourceDTO<S: Number, I, T>(val sort: S, val index: I, val target: T)
