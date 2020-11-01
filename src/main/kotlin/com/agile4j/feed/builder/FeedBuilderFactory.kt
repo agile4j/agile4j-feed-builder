@@ -2,6 +2,7 @@ package com.agile4j.feed.builder
 
 import org.apache.commons.lang3.math.NumberUtils
 import java.util.Comparator.comparingLong
+import kotlin.reflect.KClass
 
 /**
  * @author liurenpeng
@@ -12,10 +13,22 @@ object FeedBuilderFactory {
     /**
      * 适用于排序项、索引类型都为Long的降序feed
      */
-    fun <A, T> descLongBuilder(
+    fun <A: Any, T: Any> descLongBuilder(
+        accompanyClass: Class<A>,
+        targetClass: Class<T>,
+        supplier: (Long, Int) -> List<Pair<Long, Long>>
+    ) = descLongBuilder(
+        accompanyClass.kotlin, targetClass.kotlin, supplier)
+
+    /**
+     * 适用于排序项、索引类型都为Long的降序feed
+     */
+    fun <A: Any, T: Any> descLongBuilder(
+        accompanyClass: KClass<A>,
+        targetClass: KClass<T>,
         supplier: (Long, Int) -> List<Pair<Long, Long>>
     ) = generalBuilder<Long, Long, A, T>(
-        supplier,
+        Long::class, accompanyClass, targetClass, supplier,
         Long::toString, NumberUtils::toLong,
         Long::toString, NumberUtils::toLong,
         Long.MAX_VALUE, Long.MAX_VALUE,
@@ -25,10 +38,22 @@ object FeedBuilderFactory {
     /**
      * 适用于排序项、索引类型都为Long的升序feed
      */
-    fun <A, T> ascLongBuilder(
+    fun <A: Any, T: Any> ascLongBuilder(
+        accompanyClass: Class<A>,
+        targetClass: Class<T>,
+        supplier: (Long, Int) -> List<Pair<Long, Long>>
+    ) = ascLongBuilder(
+        accompanyClass.kotlin, targetClass.kotlin, supplier)
+
+    /**
+     * 适用于排序项、索引类型都为Long的升序feed
+     */
+    fun <A: Any, T: Any> ascLongBuilder(
+        accompanyClass: KClass<A>,
+        targetClass: KClass<T>,
         supplier: (Long, Int) -> List<Pair<Long, Long>>
     ) = generalBuilder<Long, Long, A, T>(
-        supplier,
+        Long::class, accompanyClass, targetClass, supplier,
         Long::toString, NumberUtils::toLong,
         Long::toString, NumberUtils::toLong,
         0L, 0L,
@@ -51,7 +76,10 @@ object FeedBuilderFactory {
      * @param indexDecoder 索引解码器
      * @param sortInitValue 排序项初始值
      */
-    fun <S: Number, I, A, T> generalBuilder(
+    fun <S: Number, I: Any, A: Any, T: Any> generalBuilder(
+        indexClass: KClass<I>,
+        accompanyClass: KClass<A>,
+        targetClass: KClass<T>,
         supplier: (S, Int) -> List<Pair<I, S>>,
         sortEncoder: (S) -> String,
         sortDecoder: (String) -> S,
@@ -64,6 +92,7 @@ object FeedBuilderFactory {
         sortType: SortType
     ): FeedBuilderBuilder<S, I, A, T> {
         return FeedBuilderBuilder(
+            indexClass, accompanyClass, targetClass,
             supplier,
             sortEncoder, sortDecoder,
             indexEncoder, indexDecoder,

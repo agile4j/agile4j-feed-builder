@@ -3,6 +3,7 @@ package com.agile4j.feed.builder
 import com.agile4j.model.builder.relation.accompanyBy
 import com.agile4j.model.builder.relation.buildBy
 import com.agile4j.model.builder.relation.indexBy
+import kotlin.reflect.KClass
 
 /**
  * @param S sortType 排序项类型
@@ -12,7 +13,10 @@ import com.agile4j.model.builder.relation.indexBy
  * @author liurenpeng
  * @date Created in 20-10-27
  */
-class FeedBuilderBuilder<S: Number, I, A, T>(
+class FeedBuilderBuilder<S: Number, I: Any, A: Any, T: Any>(
+    private val indexClass: KClass<I>,
+    private val accompanyClass: KClass<A>,
+    private val targetClass: KClass<T>,
     private val supplier: (S, Int) -> List<Pair<I, S>>,
     private val sortEncoder: (S) -> String,
     private val sortDecoder: (String) -> S,
@@ -45,7 +49,8 @@ class FeedBuilderBuilder<S: Number, I, A, T>(
         if (searchCount < maxFixedPosition) throw IllegalArgumentException(
             "searchCount值($searchCount)必须大于等于maxFixedPosition($maxFixedPosition)")
 
-        return FeedBuilder(supplier, searchCount, maxSearchCount, searchBufferSize, searchTimesLimit,
+        return FeedBuilder(indexClass, accompanyClass, targetClass,
+            supplier, searchCount, maxSearchCount, searchBufferSize, searchTimesLimit,
             maxSearchBatchSize, topNSupplier, fixedSupplierMap, builder, mapper,
             indexFilter, batchIndexFilter, filter, targetFilter, sortEncoder, sortDecoder,
             indexEncoder, indexDecoder, sortInitValue, indexInitValue,

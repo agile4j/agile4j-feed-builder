@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory
 import java.util.*
 import java.util.stream.Collectors.toSet
 import kotlin.collections.ArrayList
+import kotlin.reflect.KClass
 
 /**
  * @param S sortType 排序项类型
@@ -16,7 +17,10 @@ import kotlin.collections.ArrayList
  * @author liurenpeng
  * Created on 2020-08-07
  */
-class FeedBuilder<S: Number, I, A, T> internal constructor(
+class FeedBuilder<S: Number, I: Any, A: Any, T: Any> internal constructor(
+    private val indexClass: KClass<I>,
+    private val accompanyClass: KClass<A>,
+    private val targetClass: KClass<T>,
     private val supplier: (S, Int) -> List<Pair<I, S>>,
     private val searchCount: Int,  // TODO 这里的数值，都改成supplier
     private val maxSearchCount: Int,

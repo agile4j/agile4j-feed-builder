@@ -14,7 +14,7 @@ fun main(args: Array<String>) {
     println(position)
 
     val feedBuilder = FeedBuilderFactory
-        .descLongBuilder<Article, ArticleView>(::getArticlesByTimeDesc)
+        .descLongBuilder(Article::class, ArticleView::class, ::getArticlesByTimeDesc)
         .searchCount(10)
         .maxSearchCount(100)
         .searchBufferSize(3)
