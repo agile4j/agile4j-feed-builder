@@ -14,17 +14,14 @@ import kotlin.reflect.KClass
  * @date Created in 20-10-27
  */
 class FeedBuilderBuilder<S: Number, I: Any, A: Any, T: Any>(
+    private val sortClass: KClass<S>,
     private val indexClass: KClass<I>,
     private val accompanyClass: KClass<A>,
     private val targetClass: KClass<T>,
     private val supplier: (S, Int) -> List<Pair<I, S>>,
-    private val sortEncoder: (S) -> String,
-    private val sortDecoder: (String) -> S,
     private val indexEncoder: (I) -> String,
     private val indexDecoder: (String) -> I,
-    private val sortInitValue: () -> S,
     private val indexInitValue: () -> I,
-    private val sortComparator: Comparator<S>,
     private val indexComparator: Comparator<I>,
     private val sortType: SortType) {
 
@@ -49,12 +46,11 @@ class FeedBuilderBuilder<S: Number, I: Any, A: Any, T: Any>(
         if (searchCount.invoke() < maxFixedPosition) throw IllegalArgumentException(
             "searchCount值($searchCount)必须大于等于maxFixedPosition($maxFixedPosition)")
 
-        return FeedBuilder(indexClass, accompanyClass, targetClass,
+        return FeedBuilder(sortClass, indexClass, accompanyClass, targetClass,
             supplier, searchCount, maxSearchCount, searchBufferSize, searchTimesLimit,
             maxSearchBatchSize, topNSupplier, fixedSupplierMap, builder, mapper,
-            indexFilter, batchIndexFilter, filter, targetFilter, sortEncoder, sortDecoder,
-            indexEncoder, indexDecoder, sortInitValue, indexInitValue,
-            sortComparator, indexComparator, sortType, maxFixedPosition)
+            indexFilter, batchIndexFilter, filter, targetFilter,
+            indexEncoder, indexDecoder, indexInitValue, indexComparator, sortType, maxFixedPosition)
     }
 
     /**

@@ -7,7 +7,7 @@ package com.agile4j.feed.builder
 
 fun main(args: Array<String>) {
     val feedBuilder = FeedBuilderFactory
-        .descLongBuilder(Article::class, ArticleView::class, ::getArticlesByTimeDesc)
+        .descLongBuilderEx(Article::class, ArticleView::class, ::getArticlesByTimeDesc)
         .searchCount{ 10 }
         .maxSearchCount{ 100 }
         .searchBufferSize{ 3 }

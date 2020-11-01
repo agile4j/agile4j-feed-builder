@@ -1,8 +1,10 @@
 package com.agile4j.feed.builder
 
+import com.agile4j.model.builder.build.BuildContext
 import com.agile4j.utils.util.CollectionUtil
 import com.agile4j.utils.util.MapUtil
 import org.apache.commons.lang3.StringUtils.isBlank
+import org.apache.commons.lang3.math.NumberUtils
 import org.slf4j.LoggerFactory
 import java.util.*
 import java.util.stream.Collectors.toSet
@@ -18,6 +20,7 @@ import kotlin.reflect.KClass
  * Created on 2020-08-07
  */
 class FeedBuilder<S: Number, I: Any, A: Any, T: Any> internal constructor(
+    private val sortClass: KClass<S>,
     private val indexClass: KClass<I>,
     private val accompanyClass: KClass<A>,
     private val targetClass: KClass<T>,
@@ -35,13 +38,9 @@ class FeedBuilder<S: Number, I: Any, A: Any, T: Any> internal constructor(
     private val batchIndexFilter: (Collection<I>) -> Map<I, Boolean>,
     private val filter: (A) -> Boolean,
     private val targetFilter: (T) -> Boolean,
-    private val sortEncoder: (S) -> String,
-    private val sortDecoder: (String) -> S,
     private val indexEncoder: (I) -> String,
     private val indexDecoder: (String) -> I,
-    private val sortInitValue: () -> S,
     private val indexInitValue: () -> I,
-    private val sortComparator: Comparator<S>,
     private val indexComparator: Comparator<I>,
     private val sortType: SortType,
 
@@ -84,7 +83,8 @@ class FeedBuilder<S: Number, I: Any, A: Any, T: Any> internal constructor(
             .flatMap { it.stream() }.collect(toSet())
 
         val indices = topNIndices + fixedPositionIndices
-        val indexToSort = indices.map { it to sortInitValue.invoke() }
+        val sortInitValue = sortInitValue().invoke()
+        val indexToSort = indices.map { it to sortInitValue }
         val dtoList = rendAndFilter(indexToSort, indexFilter, batchIndexFilter)
         val indexToTarget = dtoList.associateBy({ it.index }, { it.target }).toMutableMap()
         val enableIndices = indexToTarget.keys
@@ -127,7 +127,7 @@ class FeedBuilder<S: Number, I: Any, A: Any, T: Any> internal constructor(
         val nextTarget = targetList[searchCount]
         val nextIndex = indexToTarget.entries.filter { it.value == nextTarget }[0].key
         val nextCursor: FeedBuilderCursor<S, I> = if (enableTopNIndices.contains(nextIndex)) {
-            FeedBuilderCursor(Position.TOP, sortInitValue.invoke(), nextIndex, fetchedFixedPositionIndices, false)
+            FeedBuilderCursor(Position.TOP, sortInitValue, nextIndex, fetchedFixedPositionIndices, false)
         } else {
             val nextSort = tailDTOList.filter { it.index == nextIndex }[0].sort
             FeedBuilderCursor(Position.TAIL, nextSort, nextIndex, fetchedFixedPositionIndices, false)
@@ -141,7 +141,8 @@ class FeedBuilder<S: Number, I: Any, A: Any, T: Any> internal constructor(
         searchCount: Int
     ): FeedBuilderResponse<T>  {
         val topNIndices = topNSupplier.invoke()
-        val topNIndexToSort = topNIndices.map { it to sortInitValue.invoke() }
+        val sortInitValue = sortInitValue().invoke()
+        val topNIndexToSort = topNIndices.map { it to sortInitValue }
         val topNFilter: (I) -> Boolean = { indexFilter.invoke(it)
                 && !cursor.showedRandomIndices.contains(it)
                 && it <= cursor.index }
@@ -167,7 +168,7 @@ class FeedBuilder<S: Number, I: Any, A: Any, T: Any> internal constructor(
         val nextTarget = targetList[searchCount]
         val nextIndex = indexToTarget.entries.filter { it.value == nextTarget }[0].key
         val nextCursor: FeedBuilderCursor<S, I> = if (enableTopNIndices.contains(nextIndex)) {
-            FeedBuilderCursor(Position.TOP, sortInitValue.invoke(), nextIndex, cursor.showedRandomIndices, false)
+            FeedBuilderCursor(Position.TOP, sortInitValue, nextIndex, cursor.showedRandomIndices, false)
         } else {
             val nextSort = tailDTOList.filter { it.index == nextIndex }[0].sort
             FeedBuilderCursor(Position.TAIL, nextSort, nextIndex, cursor.showedRandomIndices, false)
@@ -272,7 +273,7 @@ class FeedBuilder<S: Number, I: Any, A: Any, T: Any> internal constructor(
         return fetchedDTOList
     }
 
-    private operator fun S.compareTo(s: S): Int = sortComparator.compare(this, s)
+    private operator fun S.compareTo(s: S): Int = sortComparator().compare(this, s)
     private operator fun I.compareTo(i: I): Int = indexComparator.compare(this, i)
 
     private fun rendAndFilter(
@@ -280,17 +281,29 @@ class FeedBuilder<S: Number, I: Any, A: Any, T: Any> internal constructor(
         indexFilter: (I) -> Boolean,
         batchIndexFilter: (Collection<I>) -> Map<I, Boolean>
     ): List<ResourceDTO<S, I, T>> {
+        val indexToSort = filterByIndex(originIndexToSort, indexFilter, batchIndexFilter)
+        return if (BuildContext.checkRelation(indexClass, accompanyClass, targetClass)) {
+            renderAndFilterByModelBuilder(indexToSort)
+        } else {
+            renderAndFilterByBuilderAndMapper(indexToSort)
+        }
+    }
+
+    private fun filterByIndex(
+        originIndexToSort: List<Pair<I, S>>,
+        indexFilter: (I) -> Boolean,
+        batchIndexFilter: (Collection<I>) -> Map<I, Boolean>
+    ): List<Pair<I, S>> {
         if (CollectionUtil.isEmpty(originIndexToSort)) return emptyList()
-        var indexToSort = originIndexToSort.filter { indexFilter.invoke(it.first) }
+        val indexToSort = originIndexToSort.filter { indexFilter.invoke(it.first) }
         if (CollectionUtil.isEmpty(indexToSort)) return emptyList()
         val indexToEnable = batchIndexFilter.invoke(indexToSort.map { it.first }.toSet())
-        indexToSort = originIndexToSort.filter { indexToEnable.getOrDefault(it.first, false) }
-        if (CollectionUtil.isEmpty(indexToSort)) return emptyList()
+        return indexToSort.filter { indexToEnable.getOrDefault(it.first, false) }
+    }
 
-        // TODO 可集成agile4j-model-builder的逻辑
-
-        // TODO 剪枝操作
-
+    private fun renderAndFilterByBuilderAndMapper(
+        indexToSort: List<Pair<I, S>>
+    ): List<ResourceDTO<S, I, T>> {
         val indices = indexToSort.map { it.first }
         val indexToAccompany = builder?.invoke(indices) ?: return emptyList()
         val enableAccompanies = indexToAccompany.values.stream()
@@ -313,7 +326,74 @@ class FeedBuilder<S: Number, I: Any, A: Any, T: Any> internal constructor(
         return result
     }
 
+    private fun renderAndFilterByModelBuilder(
+        indexToSort: List<Pair<I, S>>
+    ): List<ResourceDTO<S, I, T>> {
+        // TODO 剪枝操作
+        return emptyList()
+    }
+
     class ResourceDTO<S: Number, I, T>(val sort: S, val index: I, val target: T)
+
+    @Suppress("UNCHECKED_CAST")
+    private fun sortComparator(): Comparator<S> =
+        when (sortClass) {
+            Double::class -> (Comparator.comparingDouble { it: Double -> it } as Comparator<S>)
+            Float::class -> (Comparator.comparingDouble { it: Float -> it.toDouble() } as Comparator<S>)
+            Long::class -> (Comparator.comparingLong { it: Long -> it } as Comparator<S>)
+            Int::class -> (Comparator.comparingInt { it: Int -> it } as Comparator<S>)
+            Short::class -> (Comparator.comparingInt { it: Short -> it.toInt() } as Comparator<S>)
+            Byte::class -> (Comparator.comparingInt { it: Byte -> it.toInt() } as Comparator<S>)
+            else -> throw IllegalArgumentException("illegal sortType")
+        }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun sortInitValue(): () -> S =
+        if (sortType == SortType.DESC) {
+            when (sortClass) {
+                Double::class -> ({ Double.MAX_VALUE } as () -> S)
+                Float::class -> ({ Float.MAX_VALUE } as () -> S)
+                Long::class -> ({ Long.MAX_VALUE } as () -> S)
+                Int::class -> ({ Int.MAX_VALUE } as () -> S)
+                Short::class -> ({ Short.MAX_VALUE } as () -> S)
+                Byte::class -> ({ Byte.MAX_VALUE } as () -> S)
+                else -> throw IllegalArgumentException("illegal sortType")
+            }
+        } else {
+            when (sortClass) {
+                Double::class -> ({ Double.MIN_VALUE } as () -> S)
+                Float::class -> ({ Float.MIN_VALUE } as () -> S)
+                Long::class -> ({ Long.MIN_VALUE } as () -> S)
+                Int::class -> ({ Int.MIN_VALUE } as () -> S)
+                Short::class -> ({ Short.MIN_VALUE } as () -> S)
+                Byte::class -> ({ Byte.MIN_VALUE } as () -> S)
+                else -> throw IllegalArgumentException("illegal sortType")
+            }
+        }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun sortEncoder(): (S) -> String =
+        when (sortClass) {
+            Double::class -> Double::toString as (S) -> String
+            Float::class -> Float::toString as (S) -> String
+            Long::class -> Long::toString as (S) -> String
+            Int::class -> Int::toString as (S) -> String
+            Short::class -> Short::toString as (S) -> String
+            Byte::class -> Byte::toString as (S) -> String
+            else -> throw IllegalArgumentException("illegal sortType")
+        }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun sortDecoder(): (String) -> S =
+        when (sortClass) {
+            Double::class -> ( {str: String -> NumberUtils.toDouble(str) } as (String) -> S )
+            Float::class -> ( {str: String -> NumberUtils.toFloat(str) } as (String) -> S )
+            Long::class -> ( {str: String -> NumberUtils.toLong(str) } as (String) -> S )
+            Int::class -> ( {str: String -> NumberUtils.toInt(str) } as (String) -> S )
+            Short::class -> ( {str: String -> NumberUtils.toShort(str) } as (String) -> S )
+            Byte::class -> ( {str: String -> NumberUtils.toByte(str) } as (String) -> S )
+            else -> throw IllegalArgumentException("illegal sortType")
+        }
 
     @Suppress("UNCHECKED_CAST")
     private fun decrementSortVal(s: S): S =
@@ -340,11 +420,11 @@ class FeedBuilder<S: Number, I: Any, A: Any, T: Any> internal constructor(
         }
 
     private fun buildInitCursor(): FeedBuilderCursor<S, I> = FeedBuilderCursor(
-        Position.TOP, sortInitValue.invoke(), indexInitValue.invoke(), mutableSetOf(), true)
+        Position.TOP, sortInitValue().invoke(), indexInitValue.invoke(), mutableSetOf(), true)
 
     private fun encodeCursor(cursor: FeedBuilderCursor<S, I>): String {
         val positionStr = cursor.position.name
-        val sortStr = sortEncoder.invoke(cursor.sort)
+        val sortStr = sortEncoder().invoke(cursor.sort)
         val indexStr = indexEncoder.invoke(cursor.index)
         val showedRandomIndicesStr = cursor.showedRandomIndices
             .joinToString(INDEX_SEPARATOR, transform = indexEncoder)
@@ -371,7 +451,7 @@ class FeedBuilder<S: Number, I: Any, A: Any, T: Any> internal constructor(
 
         val position = Position.ofName(positionStr)
             ?: throw IllegalArgumentException("cursor格式错误:$cursorStr")
-        val sort = sortDecoder.invoke(sortStr)
+        val sort = sortDecoder().invoke(sortStr)
         val index = indexDecoder.invoke(indexStr)
         val showedRandomIndices: MutableSet<I> = if (isBlank(showedRandomIndicesStr)) mutableSetOf() else {
             val showedRandomIndexSplitList = showedRandomIndicesStr.split(INDEX_SEPARATOR)
