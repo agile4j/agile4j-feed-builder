@@ -22,11 +22,11 @@ class FeedBuilder<S: Number, I: Any, A: Any, T: Any> internal constructor(
     private val accompanyClass: KClass<A>,
     private val targetClass: KClass<T>,
     private val supplier: (S, Int) -> List<Pair<I, S>>,
-    private val searchCount: Int,  // TODO 这里的数值，都改成supplier
-    private val maxSearchCount: Int,
-    private val searchBufferSize: Int,
-    private val searchTimesLimit: Int,
-    private val maxSearchBatchSize: Int,
+    private val searchCount: () -> Int,
+    private val maxSearchCount: () -> Int,
+    private val searchBufferSize: () -> Int,
+    private val searchTimesLimit: () -> Int,
+    private val maxSearchBatchSize: () -> Int,
     private val topNSupplier: () -> List<I>,
     private val fixedSupplierMap: MutableMap<FixedPosition, () -> List<I>>,
     private val builder: ((Collection<I>) -> Map<I, A>)?,
@@ -39,8 +39,8 @@ class FeedBuilder<S: Number, I: Any, A: Any, T: Any> internal constructor(
     private val sortDecoder: (String) -> S,
     private val indexEncoder: (I) -> String,
     private val indexDecoder: (String) -> I,
-    private val sortInitValue: S,
-    private val indexInitValue: I,
+    private val sortInitValue: () -> S,
+    private val indexInitValue: () -> I,
     private val sortComparator: Comparator<S>,
     private val indexComparator: Comparator<I>,
     private val sortType: SortType,
@@ -51,14 +51,14 @@ class FeedBuilder<S: Number, I: Any, A: Any, T: Any> internal constructor(
     private val logger = LoggerFactory.getLogger(this::class.java)
     private val random = Random()
 
-    fun buildBy(cursorStr: String?): FeedBuilderResponse<T> = buildBy(cursorStr, searchCount)
+    fun buildBy(cursorStr: String?): FeedBuilderResponse<T> = buildBy(cursorStr, searchCount.invoke())
 
     /**
      * @param cursorStr 第一次请求传入""，后续请求透传上次请求返回的[FeedBuilderResponse.nextCursor]
      * @param searchCount 本次查询条数 必须大于等于最大固定资源位位置，否则抛出[IllegalArgumentException]
      */
     fun buildBy(cursorStr: String?, searchCount: Int): FeedBuilderResponse<T> {
-        val realSearchCount = Math.min(searchCount, maxSearchCount)
+        val realSearchCount = Math.min(searchCount, maxSearchCount.invoke())
         if (realSearchCount < maxFixedPosition) throw IllegalArgumentException(
             "searchCount值($realSearchCount)必须大于等于maxFixedPosition($maxFixedPosition)")
 
@@ -84,7 +84,7 @@ class FeedBuilder<S: Number, I: Any, A: Any, T: Any> internal constructor(
             .flatMap { it.stream() }.collect(toSet())
 
         val indices = topNIndices + fixedPositionIndices
-        val indexToSort = indices.map { it to sortInitValue }
+        val indexToSort = indices.map { it to sortInitValue.invoke() }
         val dtoList = rendAndFilter(indexToSort, indexFilter, batchIndexFilter)
         val indexToTarget = dtoList.associateBy({ it.index }, { it.target }).toMutableMap()
         val enableIndices = indexToTarget.keys
@@ -127,7 +127,7 @@ class FeedBuilder<S: Number, I: Any, A: Any, T: Any> internal constructor(
         val nextTarget = targetList[searchCount]
         val nextIndex = indexToTarget.entries.filter { it.value == nextTarget }[0].key
         val nextCursor: FeedBuilderCursor<S, I> = if (enableTopNIndices.contains(nextIndex)) {
-            FeedBuilderCursor(Position.TOP, sortInitValue, nextIndex, fetchedFixedPositionIndices, false)
+            FeedBuilderCursor(Position.TOP, sortInitValue.invoke(), nextIndex, fetchedFixedPositionIndices, false)
         } else {
             val nextSort = tailDTOList.filter { it.index == nextIndex }[0].sort
             FeedBuilderCursor(Position.TAIL, nextSort, nextIndex, fetchedFixedPositionIndices, false)
@@ -141,7 +141,7 @@ class FeedBuilder<S: Number, I: Any, A: Any, T: Any> internal constructor(
         searchCount: Int
     ): FeedBuilderResponse<T>  {
         val topNIndices = topNSupplier.invoke()
-        val topNIndexToSort = topNIndices.map { it to sortInitValue }
+        val topNIndexToSort = topNIndices.map { it to sortInitValue.invoke() }
         val topNFilter: (I) -> Boolean = { indexFilter.invoke(it)
                 && !cursor.showedRandomIndices.contains(it)
                 && it <= cursor.index }
@@ -167,7 +167,7 @@ class FeedBuilder<S: Number, I: Any, A: Any, T: Any> internal constructor(
         val nextTarget = targetList[searchCount]
         val nextIndex = indexToTarget.entries.filter { it.value == nextTarget }[0].key
         val nextCursor: FeedBuilderCursor<S, I> = if (enableTopNIndices.contains(nextIndex)) {
-            FeedBuilderCursor(Position.TOP, sortInitValue, nextIndex, cursor.showedRandomIndices, false)
+            FeedBuilderCursor(Position.TOP, sortInitValue.invoke(), nextIndex, cursor.showedRandomIndices, false)
         } else {
             val nextSort = tailDTOList.filter { it.index == nextIndex }[0].sort
             FeedBuilderCursor(Position.TAIL, nextSort, nextIndex, cursor.showedRandomIndices, false)
@@ -210,12 +210,12 @@ class FeedBuilder<S: Number, I: Any, A: Any, T: Any> internal constructor(
                 && !topNIndices.contains(it)
                 && !cursor.showedRandomIndices.contains(it) }
 
-        val realFetchCount = searchCount + searchBufferSize + 1
+        val realFetchCount = searchCount + searchBufferSize.invoke() + 1
         var indexToSort = supplier.invoke(sortOffset, realFetchCount)
         while (CollectionUtil.isNotEmpty(indexToSort)) {
-            if (searchTimes >= searchTimesLimit) {
+            if (searchTimes >= searchTimesLimit.invoke()) {
                 logger.warn("searchTimes over limit. searchTimes:{} searchTimeLimit:{}",
-                    searchTimes, searchTimesLimit)
+                    searchTimes, searchTimesLimit.invoke())
                 return fetchedDTOList
             }
 
@@ -225,7 +225,7 @@ class FeedBuilder<S: Number, I: Any, A: Any, T: Any> internal constructor(
                 val currSortOffset = indexToSort[searchCount].second
                 if (currSortOffset == sortOffset) {
                     // 说明同offset的记录条数超出searchCount了，策略是先全部查出当前offset的记录，再offset--/++
-                    indexToSort = supplier.invoke(sortOffset, maxSearchBatchSize)
+                    indexToSort = supplier.invoke(sortOffset, maxSearchBatchSize.invoke())
                     sortOffset = if (sortType == SortType.DESC)
                         decrementSortVal(sortOffset) else incrementSortVal(sortOffset)
                 } else {
@@ -340,7 +340,7 @@ class FeedBuilder<S: Number, I: Any, A: Any, T: Any> internal constructor(
         }
 
     private fun buildInitCursor(): FeedBuilderCursor<S, I> = FeedBuilderCursor(
-        Position.TOP, sortInitValue, indexInitValue, mutableSetOf(), true)
+        Position.TOP, sortInitValue.invoke(), indexInitValue.invoke(), mutableSetOf(), true)
 
     private fun encodeCursor(cursor: FeedBuilderCursor<S, I>): String {
         val positionStr = cursor.position.name

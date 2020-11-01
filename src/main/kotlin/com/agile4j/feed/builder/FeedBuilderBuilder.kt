@@ -22,17 +22,17 @@ class FeedBuilderBuilder<S: Number, I: Any, A: Any, T: Any>(
     private val sortDecoder: (String) -> S,
     private val indexEncoder: (I) -> String,
     private val indexDecoder: (String) -> I,
-    private val sortInitValue: S,
-    private val indexInitValue: I,
+    private val sortInitValue: () -> S,
+    private val indexInitValue: () -> I,
     private val sortComparator: Comparator<S>,
     private val indexComparator: Comparator<I>,
     private val sortType: SortType) {
 
-    private var searchCount: Int = DEFAULT_SEARCH_COUNT
-    private var maxSearchCount: Int = DEFAULT_MAX_SEARCH_COUNT
-    private var searchBufferSize: Int = DEFAULT_SEARCH_BUFFER_SIZE
-    private var searchTimesLimit: Int = DEFAULT_SEARCH_TIMES_LIMIT
-    private var maxSearchBatchSize: Int = DEFAULT_MAX_SEARCH_BATCH_SIZE
+    private var searchCount: () -> Int = { DEFAULT_SEARCH_COUNT }
+    private var maxSearchCount: () -> Int = { DEFAULT_MAX_SEARCH_COUNT }
+    private var searchBufferSize: () -> Int = { DEFAULT_SEARCH_BUFFER_SIZE }
+    private var searchTimesLimit: () -> Int = { DEFAULT_SEARCH_TIMES_LIMIT }
+    private var maxSearchBatchSize: () -> Int = { DEFAULT_MAX_SEARCH_BATCH_SIZE }
     private var topNSupplier: () -> List<I> = ::emptyList
     private var fixedSupplierMap: MutableMap<FixedPosition, () -> List<I>> = mutableMapOf()
     private var builder: ((Collection<I>) -> Map<I, A>)? = null
@@ -43,10 +43,10 @@ class FeedBuilderBuilder<S: Number, I: Any, A: Any, T: Any>(
     private var targetFilter: (T) -> Boolean = { true }
 
     fun build(): FeedBuilder<S, I, A, T> {
-        if (maxSearchCount < searchCount) throw IllegalArgumentException(
+        if (maxSearchCount.invoke() < searchCount.invoke()) throw IllegalArgumentException(
             "maxSearchCount值($maxSearchCount)必须大于等于searchCount($searchCount)")
         val maxFixedPosition = fixedSupplierMap.keys.maxBy { it.number }?.number?:0
-        if (searchCount < maxFixedPosition) throw IllegalArgumentException(
+        if (searchCount.invoke() < maxFixedPosition) throw IllegalArgumentException(
             "searchCount值($searchCount)必须大于等于maxFixedPosition($maxFixedPosition)")
 
         return FeedBuilder(indexClass, accompanyClass, targetClass,
@@ -61,7 +61,7 @@ class FeedBuilderBuilder<S: Number, I: Any, A: Any, T: Any>(
      * 每次获取的资源条数
      * 默认值[DEFAULT_SEARCH_COUNT]
      */
-    fun searchCount(searchCount: Int): FeedBuilderBuilder<S, I, A, T> {
+    fun searchCount(searchCount: () -> Int): FeedBuilderBuilder<S, I, A, T> {
         this.searchCount = searchCount
         return this
     }
@@ -71,7 +71,7 @@ class FeedBuilderBuilder<S: Number, I: Any, A: Any, T: Any>(
      * [searchCount]最终值=Math.min(searchCount, maxSearchCount)
      * 默认值[DEFAULT_MAX_SEARCH_COUNT]
      */
-    fun maxSearchCount(maxSearchCount: Int): FeedBuilderBuilder<S, I, A, T> {
+    fun maxSearchCount(maxSearchCount: () -> Int): FeedBuilderBuilder<S, I, A, T> {
         this.maxSearchCount = maxSearchCount
         return this
     }
@@ -80,7 +80,7 @@ class FeedBuilderBuilder<S: Number, I: Any, A: Any, T: Any>(
      * 为避免读时过滤导致多次查询增加的额外查询条数
      * 默认值[DEFAULT_SEARCH_BUFFER_SIZE]
      */
-    fun searchBufferSize(searchBufferSize: Int): FeedBuilderBuilder<S, I, A, T> {
+    fun searchBufferSize(searchBufferSize: () -> Int): FeedBuilderBuilder<S, I, A, T> {
         this.searchBufferSize = searchBufferSize
         return this
     }
@@ -89,7 +89,7 @@ class FeedBuilderBuilder<S: Number, I: Any, A: Any, T: Any>(
      * 为避免死循环限制一次请求最多获取资源次数
      * 默认值[DEFAULT_SEARCH_TIMES_LIMIT]
      */
-    fun searchTimesLimit(searchTimesLimit: Int): FeedBuilderBuilder<S, I, A, T> {
+    fun searchTimesLimit(searchTimesLimit: () -> Int): FeedBuilderBuilder<S, I, A, T> {
         this.searchTimesLimit = searchTimesLimit
         return this
     }
@@ -98,7 +98,7 @@ class FeedBuilderBuilder<S: Number, I: Any, A: Any, T: Any>(
      * 当排序项相同的资源条量大于“每次获取的资源条数”时，一次性把该排序项对应值下的资源全部取出时的limit大数值
      * 默认值[DEFAULT_MAX_SEARCH_BATCH_SIZE]
      */
-    fun maxSearchBatchSize(maxSearchBatchSize: Int): FeedBuilderBuilder<S, I, A, T> {
+    fun maxSearchBatchSize(maxSearchBatchSize: () -> Int): FeedBuilderBuilder<S, I, A, T> {
         this.maxSearchBatchSize = maxSearchBatchSize
         return this
     }

@@ -31,7 +31,7 @@ object FeedBuilderFactory {
         Long::class, accompanyClass, targetClass, supplier,
         Long::toString, NumberUtils::toLong,
         Long::toString, NumberUtils::toLong,
-        Long.MAX_VALUE, Long.MAX_VALUE,
+        { Long.MAX_VALUE }, { Long.MAX_VALUE },
         comparingLong {it}, comparingLong {it},
         SortType.DESC)
 
@@ -56,7 +56,7 @@ object FeedBuilderFactory {
         Long::class, accompanyClass, targetClass, supplier,
         Long::toString, NumberUtils::toLong,
         Long::toString, NumberUtils::toLong,
-        0L, 0L,
+        { 0L }, { 0L },
         comparingLong {it}, comparingLong {it},
         SortType.ASC)
 
@@ -85,8 +85,8 @@ object FeedBuilderFactory {
         sortDecoder: (String) -> S,
         indexEncoder: (I) -> String,
         indexDecoder: (String) -> I,
-        sortInitValue: S,
-        indexInitValue: I,
+        sortInitValue: () -> S,
+        indexInitValue: () -> I,
         sortComparator: Comparator<S>,
         indexComparator: Comparator<I>,
         sortType: SortType

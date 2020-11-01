@@ -15,11 +15,11 @@ fun main(args: Array<String>) {
 
     val feedBuilder = FeedBuilderFactory
         .descLongBuilder(Article::class, ArticleView::class, ::getArticlesByTimeDesc)
-        .searchCount(10)
-        .maxSearchCount(100)
-        .searchBufferSize(3)
-        .searchTimesLimit(5)
-        .maxSearchBatchSize(100)
+        .searchCount{ 10 }
+        .maxSearchCount{ 100 }
+        .searchBufferSize{ 3 }
+        .searchTimesLimit{ 5 }
+        .maxSearchBatchSize{ 100 }
         .topNSupplier { listOf(1L, 2L, 3L, 4L, 5L, 6L) }
         .fixedSupplier(FixedPosition.SECOND) { listOf(6L, 7L, 8L) }
         .builder(::getArticleByIds)
