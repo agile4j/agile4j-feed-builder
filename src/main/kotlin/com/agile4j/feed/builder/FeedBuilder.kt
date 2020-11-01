@@ -125,7 +125,7 @@ class FeedBuilder<S: Number, I: Any, A: Any, T: Any> internal constructor(
             ArrayList(topNTargetList.size + tailTargetList.size)
         targetList.addAll(topNTargetList)
         targetList.addAll(tailTargetList)
-        fixedPositionToFetchedIndex.forEach{ targetList.add(it.key.number, indexToTarget[it.value]!!) }
+        fixedPositionToFetchedIndex.forEach{ targetList.add(it.key.number - 1, indexToTarget[it.value]!!) }
 
         if (targetList.size < searchCount) return FeedBuilderResponse(targetList, NO_MORE_CURSOR_STR)
 
@@ -170,7 +170,7 @@ class FeedBuilder<S: Number, I: Any, A: Any, T: Any> internal constructor(
 
         if (targetList.size < searchCount) return FeedBuilderResponse(targetList, NO_MORE_CURSOR_STR)
 
-        val nextTarget = targetList[searchCount]
+        val nextTarget = targetList[searchCount - 1]
         val nextIndex = indexToTarget.entries.filter { it.value == nextTarget }[0].key
         val nextCursor: FeedBuilderCursor<S, I> = if (enableTopNIndices.contains(nextIndex)) {
             FeedBuilderCursor(Position.TOP, sortInitValue, nextIndex, cursor.showedRandomIndices, false)
@@ -192,7 +192,7 @@ class FeedBuilder<S: Number, I: Any, A: Any, T: Any> internal constructor(
         } else {
             FeedBuilderResponse(dtoList.map { it.target }.subList(0, searchCount + 1),
                 encodeCursor(FeedBuilderCursor(Position.TAIL,
-                    dtoList[searchCount + 1].sort, dtoList[searchCount + 1].index,
+                    dtoList[searchCount].sort, dtoList[searchCount].index,
                     cursor.showedRandomIndices, false)))
         }
     }
