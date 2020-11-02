@@ -3,7 +3,6 @@ agile4j-feed-builder是用Kotlin语言实现的feed流构建器，可在Kotlin/J
 
 # 目录
    * [如何引入](#如何引入)
-   * [使用场景](#使用场景)
    * [解决的问题域](#解决的问题域)
       * [多组成部分feed流](#多组成部分feed流)
       * [优先级和去重问题](#优先级和去重问题)
@@ -11,30 +10,28 @@ agile4j-feed-builder是用Kotlin语言实现的feed流构建器，可在Kotlin/J
       * [排序项相同的问题](#排序项相同的问题)
       * [数量处理](#数量处理)
       * [读时过滤](#读时过滤)
-   * [特性](#特性)
-      * [自动映射](#自动映射)
-      * [增量lazy式构建](#增量lazy式构建)
-      * [聚合批量构建](#聚合批量构建)
-      * [不会重复构建](#不会重复构建)
-      * [代码零侵入](#代码零侵入)
    * [API](#API)
-      * [indexBy](#indexBy)
-      * [buildBy](#buildBy)
-      * [accompanyBy](#accompanyBy)
-      * [inJoin](#inJoin-1)
-      * [exJoin](#exJoin-1)
-      * [mapMulti](#mapMulti)
-      * [mapSingle](#mapSingle)
-   * [如何接入](#如何接入)
-      * [step1.定义Target](#step1定义Target)
-      * [step2.声明Relation](#step2声明Relation)
-      * [step3.构建Target](#step3构建Target)
-   * [Java如何接入](#Java如何接入)
-      * [step1.定义Target-DTO](#step1定义Target-DTO)
-      * [step2.定义Target-VO](#step2定义Target-VO)
-      * [step3.声明Relation](#step3声明Relation)
-      * [step4.构建Target](#step4构建Target)
-   * [Q&A](#qa)
+      * [构建feedBuilder](#构建feedBuilder)
+         * [构建排序项类型和索引类型都为Long的降序feed流](#构建排序项类型和索引类型都为Long的降序feed流)
+         * [构建排序项类型和索引类型都为Long的升序feed流](#构建排序项类型和索引类型都为Long的升序feed流)
+         * [通用feed流API](#通用feed流API)
+      * [构建feed](#构建feed)
+      * [自定义参数](#自定义参数)
+         * [每次获取的资源条数](#每次获取的资源条数)
+         * [每次获取的最大资源条数](#每次获取的最大资源条数)
+         * [为避免读时过滤导致多次查询增加的额外查询条数](#为避免读时过滤导致多次查询增加的额外查询条数)
+         * [为避免耗时过长限制一次构建最多获取资源次数](#为避免耗时过长限制一次构建最多获取资源次数)
+         * [limit大数值](#limit大数值)
+         * [topN资源](#topN资源)
+         * [固定位置资源](#固定位置资源)
+         * [资源构建器](#资源构建器)
+         * [资源映射器](#资源映射器)
+         * [索引过滤器](#索引过滤器)
+         * [批量索引过滤器](#批量索引过滤器)
+         * [伴生资源过滤器](#伴生资源过滤器)
+         * [映射目标过滤器](#映射目标过滤器)
+   * [高级特性](#高级特性)
+      * [集成agile4j-model-builder](#集成agile4j-model-builder)
 
 # 如何引入
 
@@ -53,11 +50,8 @@ dependencies {
 </dependency>
 ```
 
-# 使用场景
-
-用于解决通过cursor拉取feed流的场景。
-
 # 解决的问题域
+* 用于解决通过cursor拉取feed流的场景。
 
 ## 多组成部分feed流
 * feed流是由多部分组成的，组成分3类：
@@ -400,15 +394,6 @@ val feedBuilder = FeedBuilderFactory
     .build()
 ```
 
-### 批量索引过滤器
-* 默认不过滤，可通过`batchIndexFilter`API自定义，例如：
-```Kotlin
-val feedBuilder = FeedBuilderFactory
-    .ascLongBuilderEx(Article::class, ArticleView::class, ::getArticlesByTimeAsc)
-    .batchIndexFilter { ids -> ids.associateWith { it > 0 } }
-    .build()
-```
-
 ### 伴生资源过滤器
 * 默认不过滤，可通过`filter`API自定义，例如：
 ```Kotlin
@@ -430,4 +415,5 @@ val feedBuilder = FeedBuilderFactory
 # 高级特性
 ## 集成agile4j-model-builder
 * 集成方式为通过[agile4j-model-builder](#https://github.com/agile4j/agile4j-model-builder)的[buildBy](#https://github.com/agile4j/agile4j-model-builder#buildBy)、[accompanyby](#https://github.com/agile4j/agile4j-model-builder#accompanyby)API声明index、accompany、target之间的relation。
-* 集成后可不声明[builder](#资源构建器)、[mapper](#资源映射器)，构建、映射过程会自动托管到[agile4j-model-builder](#https://github.com/agile4j/agile4j-model-builder)。
+* 集成后可不声明[builder](#资源构建器)、[mapper](#资源映射器)，构建、映射过程会自动托管到agile4j-model-builder。若声明了[builder](#资源构建器)、[mapper](#资源映射器)，则不会进行托管。
+* 集成后有性能优势。因为一次feed构建过程中的多次资源构建，会共用agile4j-model-builder的缓存。
