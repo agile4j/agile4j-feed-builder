@@ -148,9 +148,11 @@ class FeedBuilder<S: Number, I: Any, A: Any, T: Any> internal constructor(
         val topNIndices = topNSupplier.invoke()
         val sortInitValue = sortInitValue().invoke()
         val topNIndexToSort = topNIndices.map { it to sortInitValue }
+        val cursorIndexFilter: (I) -> Boolean = if (sortType == SortType.DESC) {
+            { it <= cursor.index } } else { { it >= cursor.index } }
         val topNFilter: (I) -> Boolean = { indexFilter.invoke(it)
                 && !cursor.showedRandomIndices.contains(it)
-                && it <= cursor.index }
+                && cursorIndexFilter.invoke(it)}
         val topNDTOList = rendAndFilter(topNIndexToSort, topNFilter, batchIndexFilter)
         val topNTargetList = topNDTOList.map { it.target }
         val enableTopNIndices = topNDTOList.map { it.index }
@@ -170,7 +172,7 @@ class FeedBuilder<S: Number, I: Any, A: Any, T: Any> internal constructor(
 
         if (targetList.size < searchCount) return FeedBuilderResponse(targetList, NO_MORE_CURSOR_STR)
 
-        val nextTarget = targetList[searchCount - 1]
+        val nextTarget = targetList[searchCount]
         val nextIndex = indexToTarget.entries.filter { it.value == nextTarget }[0].key
         val nextCursor: FeedBuilderCursor<S, I> = if (enableTopNIndices.contains(nextIndex)) {
             FeedBuilderCursor(Position.TOP, sortInitValue, nextIndex, cursor.showedRandomIndices, false)
@@ -190,7 +192,7 @@ class FeedBuilder<S: Number, I: Any, A: Any, T: Any> internal constructor(
         return if (dtoList.size < searchCount + 1) {
             FeedBuilderResponse.noMoreInstance(dtoList.map { it.target })
         } else {
-            FeedBuilderResponse(dtoList.map { it.target }.subList(0, searchCount + 1),
+            FeedBuilderResponse(dtoList.subList(0, searchCount).map { it.target },
                 encodeCursor(FeedBuilderCursor(Position.TAIL,
                     dtoList[searchCount].sort, dtoList[searchCount].index,
                     cursor.showedRandomIndices, false)))
@@ -228,7 +230,7 @@ class FeedBuilder<S: Number, I: Any, A: Any, T: Any> internal constructor(
             if (indexToSort.size < realFetchCount) {
                 dataEnd = true
             } else {
-                val currSortOffset = indexToSort[searchCount].second
+                val currSortOffset = indexToSort[realFetchCount - 1].second
                 if (currSortOffset == sortOffset) {
                     // 说明同offset的记录条数超出searchCount了，策略是先全部查出当前offset的记录，再offset--/++
                     indexToSort = supplier.invoke(sortOffset, maxSearchBatchSize.invoke())
@@ -287,6 +289,8 @@ class FeedBuilder<S: Number, I: Any, A: Any, T: Any> internal constructor(
         batchIndexFilter: (Collection<I>) -> Map<I, Boolean>
     ): List<ResourceDTO<S, I, T>> {
         val indexToSort = filterByIndex(originIndexToSort, indexFilter, batchIndexFilter)
+        if (CollectionUtil.isEmpty(indexToSort)) return emptyList()
+
         return if (BuildContext.checkRelation(indexClass, accompanyClass, targetClass)) {
             renderAndFilterByModelBuilder(indexToSort)
         } else {
