@@ -82,7 +82,7 @@ class FeedBuilderBuilder<S: Number, I: Any, A: Any, T: Any>(
     }
 
     /**
-     * 为避免死循环限制一次请求最多获取资源次数
+     * 为避免耗时过长限制一次构建最多获取资源次数
      * 默认值[DEFAULT_SEARCH_TIMES_LIMIT]
      */
     fun searchTimesLimit(searchTimesLimit: () -> Int): FeedBuilderBuilder<S, I, A, T> {
@@ -109,7 +109,6 @@ class FeedBuilderBuilder<S: Number, I: Any, A: Any, T: Any>(
 
     /**
      * 固定位置资源
-     * 注意：对固定位置资源的处理是先随机出1个index，然后读时过滤。因此有被滤掉的可能，要求配置的资源尽量可用
      * @param fixedFixedPosition 使用枚举的目的：1.收敛有效值；2.屏蔽下标从0/1开始的实现细节
      * @param fixedSupplier 从中随机抽取1个资源
      */
@@ -170,6 +169,9 @@ class FeedBuilderBuilder<S: Number, I: Any, A: Any, T: Any>(
         return this
     }
 
+    /**
+     * 索引过滤器
+     */
     fun indexFilter(
         indexFilter: (I) -> Boolean
     ): FeedBuilderBuilder<S, I, A, T> {
@@ -177,6 +179,9 @@ class FeedBuilderBuilder<S: Number, I: Any, A: Any, T: Any>(
         return this
     }
 
+    /**
+     * 批量索引过滤器
+     */
     fun batchIndexFilter(
         batchIndexFilter: (Collection<I>) -> Map<I, Boolean>
     ): FeedBuilderBuilder<S, I, A, T> {
@@ -184,6 +189,9 @@ class FeedBuilderBuilder<S: Number, I: Any, A: Any, T: Any>(
         return this
     }
 
+    /**
+     * 伴生资源过滤器
+     */
     fun filter(
         filter: (A) -> Boolean
     ): FeedBuilderBuilder<S, I, A, T> {
@@ -191,6 +199,9 @@ class FeedBuilderBuilder<S: Number, I: Any, A: Any, T: Any>(
         return this
     }
 
+    /**
+     * 映射目标过滤器
+     */
     fun targetFilter(
         targetFilter: (T) -> Boolean
     ): FeedBuilderBuilder<S, I, A, T> {

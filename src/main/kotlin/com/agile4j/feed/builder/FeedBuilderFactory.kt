@@ -98,6 +98,25 @@ object FeedBuilderFactory {
         Long::toString, NumberUtils::toLong,
         { Long.MIN_VALUE }, comparingLong {it}, SortType.ASC)
 
+    fun <S: Number, I: Any, A: Any, T: Any> generalBuilder(
+        sortClass: Class<S>,
+        indexClass: Class<I>,
+        accompanyClass: Class<A>,
+        targetClass: Class<T>,
+        supplier: (S, Int) -> List<Pair<I, S>>,
+        indexEncoder: (I) -> String,
+        indexDecoder: (String) -> I,
+        indexInitValue: () -> I,
+        indexComparator: Comparator<I>,
+        sortType: SortType
+    ) = generalBuilder(
+        sortClass.kotlin, indexClass.kotlin,
+        accompanyClass.kotlin, targetClass.kotlin,
+        supplier,
+        indexEncoder, indexDecoder,
+        indexInitValue, indexComparator,
+        sortType)
+
     /**
      * @param sortClass 排序项类型 必须是以下类型之一：[Double]、[Float]、[Long]、[Int]、[Short]、[Byte]
      * @param indexClass 索引类型 例如DB主键一般对应[Long]

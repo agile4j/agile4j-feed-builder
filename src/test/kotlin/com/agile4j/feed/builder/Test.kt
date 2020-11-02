@@ -30,9 +30,9 @@ val feedBuilder = FeedBuilderFactory
     .build()
 
 fun main(args: Array<String>) {
-    val response = feedBuilder.buildBy("TAIL;21;21;7")
-    val articleViews = response.list
-    val nextCursor = response.nextCursor
+    val response = feedBuilder.buildBy("")
+    val articleViews: List<ArticleView> = response.list
+    val nextCursor: String = response.nextCursor
 
     articleViews.forEach{ println(it) }
     println(nextCursor)
