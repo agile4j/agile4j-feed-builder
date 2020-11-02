@@ -87,7 +87,7 @@ class FeedBuilder<S: Number, I: Any, A: Any, T: Any> internal constructor(
         val fixedPositionIndices = fixedPositionToIndices.values.stream()
             .flatMap { it.stream() }.collect(toSet())
 
-        val indices = topNIndices + fixedPositionIndices
+        val indices = (topNIndices + fixedPositionIndices).toSet()
         val sortInitValue = sortInitValue().invoke()
         val indexToSort = indices.map { it to sortInitValue }
         val dtoList = rendAndFilter(indexToSort, indexFilter, batchIndexFilter)
