@@ -417,6 +417,6 @@ val feedBuilder = FeedBuilderFactory
 # 高级特性
 ## 集成agile4j-model-builder
 * agile4j-model-builder：https://github.com/agile4j/agile4j-model-builder
-* 集成方式为通过agile4j-model-builder的`buildBy`、`accompanyby`API声明index、accompany、target之间的relation。
+* 集成方式为通过agile4j-model-builder的`buildBy`、`accompanyby`API进行index、accompany、target之间的关系声明。
 * 集成后可不声明[builder](#资源构建器)、[mapper](#资源映射器)，构建、映射过程会自动托管到agile4j-model-builder。若声明了[builder](#资源构建器)、[mapper](#资源映射器)，则不会进行托管。
 * 集成后有性能优势。因为一次feed构建过程中的多次资源构建，会共用agile4j-model-builder的缓存。
