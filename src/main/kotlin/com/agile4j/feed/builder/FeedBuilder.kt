@@ -291,10 +291,15 @@ class FeedBuilder<S: Number, I: Any, A: Any, T: Any> internal constructor(
         val indexToSort = filterByIndex(originIndexToSort, indexFilter, batchIndexFilter)
         if (CollectionUtil.isEmpty(indexToSort)) return emptyList()
 
-        return if (BuildContext.checkRelation(indexClass, accompanyClass, targetClass)) {
-            renderAndFilterByModelBuilder(indexToSort)
-        } else {
-            renderAndFilterByBuilderAndMapper(indexToSort)
+        val useModelBuilder = builder == null && mapper == null
+                && BuildContext.checkRelation(indexClass, accompanyClass, targetClass)
+        val useBuilderAndMapper = builder != null && mapper != null
+
+        return when {
+            useModelBuilder -> renderAndFilterByModelBuilder(indexToSort)
+            useBuilderAndMapper -> renderAndFilterByBuilderAndMapper(indexToSort)
+            else -> throw IllegalArgumentException("The builder and mapper must be defined, "
+                    + "or they must be able to be hosted to the agile4j-model-builder.")
         }
     }
 
