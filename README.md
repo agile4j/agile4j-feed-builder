@@ -38,7 +38,7 @@ agile4j-feed-builder是用Kotlin语言实现的feed流构建器，可在Kotlin/J
 >Gradle
 ```groovy
 dependencies {
-    compile "com.agile4j:agile4j-feed-builder:1.0.1"
+    compile "com.agile4j:agile4j-feed-builder:1.0.2"
 }
 ```
 >Maven
@@ -46,7 +46,7 @@ dependencies {
 <dependency>
     <groupId>com.agile4j</groupId>
     <artifactId>agile4j-feed-builder</artifactId>
-    <version>1.0.1</version>
+    <version>1.0.2</version>
 </dependency>
 ```
 
