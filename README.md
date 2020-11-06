@@ -358,6 +358,7 @@ val feedBuilder = FeedBuilderFactory
 val feedBuilder = FeedBuilderFactory
     .ascLongBuilderEx(Article::class, ArticleView::class, ::getArticlesByTimeAsc)
     .builder(::getArticleByIds)
+    .mapper(::articleMapper)
     .build()
 
 // builder
@@ -371,6 +372,7 @@ fun getArticleByIds(ids: Collection<Long>): Map<Long, Article>
 ```Kotlin
 val feedBuilder = FeedBuilderFactory
     .ascLongBuilderEx(Article::class, ArticleView::class, ::getArticlesByTimeAsc)
+    .builder(::getArticleByIds)
     .mapper(::articleMapper)
     .build()
 
