@@ -7,8 +7,10 @@ package com.agile4j.feed.builder
 class FeedBuilderResponse<T: Any>(val list: List<T>, val nextCursor: String) {
 
     companion object {
-        fun <T: Any> noMoreInstance() = noMoreInstance<T>(emptyList())
-        fun <T: Any> noMoreInstance(list: List<T>) = FeedBuilderResponse(list, NO_MORE_CURSOR_STR)
+        fun <T: Any> noMoreResp(noMoreCursor: String) =
+            noMoreResp<T>(emptyList(), noMoreCursor)
+        fun <T: Any> noMoreResp(list: List<T>, noMoreCursor: String) =
+            FeedBuilderResponse(list, noMoreCursor)
     }
 
 }

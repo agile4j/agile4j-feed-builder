@@ -30,6 +30,7 @@ class TestByModelBuilder {
         .batchIndexFilter { ids -> ids.associateWith { it > 0 } }
         .filter { it.id > 0 }
         .targetFilter { view -> view.article.id > 0 }
+        .noMoreCursor("no_more")
         .build()
 
     @Test
@@ -42,5 +43,14 @@ class TestByModelBuilder {
         Assert.assertTrue(nextCursor.startsWith("TAIL;11;11;"))
         articleViews.forEach{ println(it) }
         println(nextCursor)
+    }
+
+    @Test
+    fun testNoMore() {
+        val response = feedBuilder.buildBy("no_more")
+        val articleViews: List<ArticleView> = response.list
+        val nextCursor: String = response.nextCursor
+        Assert.assertEquals(0, articleViews.size)
+        Assert.assertTrue(nextCursor == "no_more")
     }
 }

@@ -1,5 +1,6 @@
 package com.agile4j.feed.builder
 
+import com.agile4j.feed.builder.FeedBuilderResponse.Companion.noMoreResp
 import com.agile4j.model.builder.build.BuildContext
 import com.agile4j.model.builder.buildIndexToAccompanyWithExistModelBuilder
 import com.agile4j.model.builder.buildMapOfAWithExistModelBuilder
@@ -45,6 +46,7 @@ class FeedBuilder<S: Number, I: Any, A: Any, T: Any> internal constructor(
     private val indexInitValue: () -> I,
     private val indexComparator: Comparator<I>,
     private val sortType: SortType,
+    private val noMoreCursor: String,
 
     private val maxFixedPosition: Int
 
@@ -66,7 +68,7 @@ class FeedBuilder<S: Number, I: Any, A: Any, T: Any> internal constructor(
 
         try {
             return when {
-                cursor.isNoMore() -> FeedBuilderResponse.noMoreInstance()
+                cursor.isNoMore() -> noMoreResp(noMoreCursor)
                 cursor.isTail() -> buildTailPosition(cursor, realSearchCount)
                 cursor.isFirstPage -> buildFirstPage(cursor, realSearchCount)
                 else -> buildHeadPosition(cursor, realSearchCount)
@@ -127,7 +129,7 @@ class FeedBuilder<S: Number, I: Any, A: Any, T: Any> internal constructor(
         targetList.addAll(tailTargetList)
         fixedPositionToFetchedIndex.forEach{ targetList.add(it.key.number - 1, indexToTarget[it.value]!!) }
 
-        if (targetList.size < searchCount) return FeedBuilderResponse(targetList, NO_MORE_CURSOR_STR)
+        if (targetList.size < searchCount) return noMoreResp(targetList, noMoreCursor)
 
         val nextTarget = targetList[searchCount]
         val nextIndex = indexToTarget.entries.filter { it.value == nextTarget }[0].key
@@ -170,7 +172,7 @@ class FeedBuilder<S: Number, I: Any, A: Any, T: Any> internal constructor(
         targetList.addAll(topNTargetList)
         targetList.addAll(tailTargetList)
 
-        if (targetList.size < searchCount) return FeedBuilderResponse(targetList, NO_MORE_CURSOR_STR)
+        if (targetList.size < searchCount) return noMoreResp(targetList, noMoreCursor)
 
         val nextTarget = targetList[searchCount]
         val nextIndex = indexToTarget.entries.filter { it.value == nextTarget }[0].key
@@ -190,7 +192,7 @@ class FeedBuilder<S: Number, I: Any, A: Any, T: Any> internal constructor(
     ): FeedBuilderResponse<T>  {
         val dtoList = fetchTailDTOList(cursor, searchCount + 1)
         return if (dtoList.size < searchCount + 1) {
-            FeedBuilderResponse.noMoreInstance(dtoList.map { it.target })
+            noMoreResp(dtoList.map { it.target }, noMoreCursor)
         } else {
             FeedBuilderResponse(dtoList.subList(0, searchCount).map { it.target },
                 encodeCursor(FeedBuilderCursor(Position.TAIL,
@@ -464,6 +466,7 @@ class FeedBuilder<S: Number, I: Any, A: Any, T: Any> internal constructor(
         Position.TOP, sortInitValue().invoke(), indexInitValue.invoke(), mutableSetOf(), true)
 
     private fun encodeCursor(cursor: FeedBuilderCursor<S, I>): String {
+        if (cursor.isNoMore()) return noMoreCursor
         val positionStr = cursor.position.name
         val sortStr = sortEncoder().invoke(cursor.sort)
         val indexStr = indexEncoder.invoke(cursor.index)
@@ -477,10 +480,12 @@ class FeedBuilder<S: Number, I: Any, A: Any, T: Any> internal constructor(
      * @param cursorStr 格式示例 TOP;10;2492;96789002;90009623,32397452,94994452
      * @throws IllegalArgumentException cursorStr格式错误
      */
-    private fun decodeCursor(cursorStr: String?): FeedBuilderCursor<S, I> {
-        if (isBlank(cursorStr)) {
+    private fun decodeCursor(originCursorStr: String?): FeedBuilderCursor<S, I> {
+        if (isBlank(originCursorStr)) {
             return buildInitCursor()
         }
+        val cursorStr = if (originCursorStr == noMoreCursor)
+            DEFAULT_NO_MORE_CURSOR_STR else originCursorStr
 
         val splitList = cursorStr!!.split(CURSOR_SEPARATOR)
         if (splitList.size != 4) throw IllegalArgumentException("cursor格式错误:$cursorStr")

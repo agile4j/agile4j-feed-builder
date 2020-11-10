@@ -38,6 +38,7 @@ class FeedBuilderBuilder<S: Number, I: Any, A: Any, T: Any>(
     private var batchIndexFilter: (Collection<I>) -> Map<I, Boolean> = { it.associateWith { true } }
     private var filter: (A) -> Boolean = { true }
     private var targetFilter: (T) -> Boolean = { true }
+    private var noMoreCursor: String = DEFAULT_NO_MORE_CURSOR_STR
 
     fun build(): FeedBuilder<S, I, A, T> {
         if (maxSearchCount.invoke() < searchCount.invoke()) throw IllegalArgumentException(
@@ -50,7 +51,8 @@ class FeedBuilderBuilder<S: Number, I: Any, A: Any, T: Any>(
             supplier, searchCount, maxSearchCount, searchBufferSize, searchTimesLimit,
             maxSearchBatchSize, topNSupplier, fixedSupplierMap, builder, mapper,
             indexFilter, batchIndexFilter, filter, targetFilter,
-            indexEncoder, indexDecoder, indexInitValue, indexComparator, sortType, maxFixedPosition)
+            indexEncoder, indexDecoder, indexInitValue, indexComparator, sortType,
+            noMoreCursor, maxFixedPosition)
     }
 
     /**
@@ -206,6 +208,16 @@ class FeedBuilderBuilder<S: Number, I: Any, A: Any, T: Any>(
         targetFilter: (T) -> Boolean
     ): FeedBuilderBuilder<S, I, A, T> {
         this.targetFilter = targetFilter
+        return this
+    }
+
+    /**
+     * noMoreCursor值
+     */
+    fun noMoreCursor(
+        noMoreCursor: String
+    ): FeedBuilderBuilder<S, I, A, T> {
+        this.noMoreCursor = noMoreCursor
         return this
     }
 }
