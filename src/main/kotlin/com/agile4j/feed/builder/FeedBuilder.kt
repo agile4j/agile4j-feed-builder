@@ -477,7 +477,7 @@ class FeedBuilder<S: Number, I: Any, A: Any, T: Any> internal constructor(
     }
 
     /**
-     * @param cursorStr 格式示例 TOP;10;2492;96789002;90009623,32397452,94994452
+     * @param originCursorStr 格式示例 TOP;10;2492;96789002;90009623,32397452,94994452
      * @throws IllegalArgumentException cursorStr格式错误
      */
     private fun decodeCursor(originCursorStr: String?): FeedBuilderCursor<S, I> {
@@ -485,7 +485,7 @@ class FeedBuilder<S: Number, I: Any, A: Any, T: Any> internal constructor(
             return buildInitCursor()
         }
         val cursorStr = if (originCursorStr == noMoreCursor)
-            DEFAULT_NO_MORE_CURSOR_STR else originCursorStr
+            NO_MORE_CURSOR_STR else originCursorStr
 
         val splitList = cursorStr!!.split(CURSOR_SEPARATOR)
         if (splitList.size != 4) throw IllegalArgumentException("cursor格式错误:$cursorStr")

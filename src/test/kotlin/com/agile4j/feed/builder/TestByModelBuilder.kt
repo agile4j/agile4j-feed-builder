@@ -30,7 +30,7 @@ class TestByModelBuilder {
         .batchIndexFilter { ids -> ids.associateWith { it > 0 } }
         .filter { it.id > 0 }
         .targetFilter { view -> view.article.id > 0 }
-        .noMoreCursor("no_more")
+        //.noMoreCursor("no_more")
         .build()
 
     @Test
