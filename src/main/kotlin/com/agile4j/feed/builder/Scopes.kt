@@ -1,7 +1,7 @@
 package com.agile4j.feed.builder
 
 import com.agile4j.model.builder.build.ModelBuilder
-import com.agile4j.utils.scope.ScopeKey
+import com.agile4j.utils.scope.ContextScopeKey
 
 /**
  * @author liurenpeng
@@ -19,5 +19,6 @@ object Scopes {
     }
     fun setModelBuilder(modelBuilder: ModelBuilder?) = modelBuilderScopeKey.set(modelBuilder)
     private fun nullableModelBuilder() = modelBuilderScopeKey.get()
-    private val modelBuilderScopeKey: ScopeKey<ModelBuilder?> = ScopeKey.withDefaultValue(null)
+    private val modelBuilderScopeKey: ContextScopeKey<ModelBuilder?> = ContextScopeKey
+        .withDefaultValue(null)
 }
