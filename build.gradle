@@ -21,7 +21,7 @@ repositories {
 
 dependencies {
     compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
-    compile "com.agile4j:agile4j-model-builder:1.2.1"
+    compile "com.agile4j:agile4j-model-builder:1.2.2"
     testCompile "junit:junit:4.12"
 }
 
