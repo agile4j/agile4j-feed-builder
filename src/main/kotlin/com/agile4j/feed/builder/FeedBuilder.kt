@@ -172,7 +172,7 @@ class FeedBuilder<S: Number, I: Any, A: Any, T: Any> internal constructor(
         targetList.addAll(topNTargetList)
         targetList.addAll(tailTargetList)
 
-        if (targetList.size < searchCount) return noMoreResp(targetList, noMoreCursor)
+        if (targetList.size < searchCount + 1) return noMoreResp(targetList, noMoreCursor)
 
         val nextTarget = targetList[searchCount]
         val nextIndex = indexToTarget.entries.filter { it.value == nextTarget }[0].key
